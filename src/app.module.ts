@@ -8,9 +8,10 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { CommunicationModule } from './modules/communication/communication.module';
 import { IndicatorsModule } from './modules/indicators/indicators.module';
 import { SecurityModule } from './modules/security/security.module';
+import { StructureModule } from './modules/structure/structure.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, SupabaseModule, FinanceModule, CommunicationModule, IndicatorsModule, SecurityModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), AuthModule, SupabaseModule, FinanceModule, CommunicationModule, IndicatorsModule, SecurityModule, StructureModule],
   controllers: [AppController],
   providers: [AppService],
 })

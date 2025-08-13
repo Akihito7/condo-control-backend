@@ -1,0 +1,164 @@
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
+import { Token } from "src/decorators/token.decorator";
+import { AuthGuard } from "src/guards/auth.guard";
+import { StructureService } from "./structure.service";
+import { CreateEmployeeBody, InterventionBody, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
+
+@Controller('structure')
+export class StructureController {
+
+  constructor(private readonly structureService: StructureService) { }
+
+  @Get('work-areas/options')
+  async getWorkAreasOptions() {
+    return this.structureService.getWorkAreasOptions();
+  }
+
+  @Get('employee-status/options')
+  async getEmployeeStatusOptions() {
+    return this.structureService.getEmployeeStatusOptions()
+  }
+
+  @Get('employee-roles/options')
+  async getEmployeeRolesOptions() {
+    return this.structureService.getEmployeeRolesOptions()
+  }
+
+  @Post('employee/create')
+  async createEmployee(@Body() body: CreateEmployeeBody) {
+    return this.structureService.createEmployee(body)
+  }
+
+  @Patch('employee/update')
+  async updateEmployee(@Body() body: CreateEmployeeBody) {
+    return this.structureService.updateEmployee(body)
+  }
+
+  @Get('employee/list/:condominiumId')
+  async getEmployees(@Param("condominiumId") condominiumId: string) {
+    return this.structureService.getEmployees(condominiumId)
+  }
+
+  @Delete('employee/delete')
+  @HttpCode(204)
+  async deleteEmployee(@Body() body: any) {
+    return this.structureService.deleteEmployee(body);
+  }
+
+  @Get('employee/schedule/:condominiumId/:date')
+  async getEmployeeSchedule(
+    @Param() params: string
+  ) {
+    return this.structureService.getEmployeeSchedule(params);
+  }
+
+  @Put('employee/schedule/update/:condominiumId')
+  async updateScheduleEmployee(
+    @Param('condominiumId') condominiumId: string,
+    @Body() body: UpdateEmployeeScheduleBody[]
+  ) {
+    return this.structureService.updateScheduleEmployee(body, condominiumId)
+  }
+
+  @Get('management-spaces/:condominiumId')
+  async getManagementSpaces(@Param("condominiumId") condominiumId: string) {
+    return this.structureService.getManagementSpaces(condominiumId)
+  }
+
+  @Get('management-spaces/events/:spaceId/:date')
+  async getManagementSpacesEvents(@Param() params: any) {
+    const { spaceId, date } = params;
+    return this.structureService.getManagementSpacesEvents(spaceId, date)
+  }
+
+  @Put('management-spaces/events/:eventId')
+  async updateSpaceEvent(
+    @Param('eventId') eventId: string,
+    @Body() body: any
+  ) {
+    return this.structureService.updateSpaceEvent(eventId, body)
+  }
+
+  @Delete('management-spaces/events/guest/:id')
+  async deleteGuestSpaceEvent(@Param('id') guestId: string) {
+    return this.structureService.deleteGuestSpaceEvent(guestId)
+  }
+
+
+  @Delete('management-spaces/events/:id')
+  async deleteEvent(@Param('id') eventId: string) {
+    return this.structureService.deleteEvent(eventId)
+  }
+
+  @Post('management-spaces/events/create')
+  async createEventSpace(
+    @Token() token: string,
+    @Body() body: any) {
+    return this.structureService.createEventSpace(body, token)
+  }
+
+  @Get('maintenance-backlog/:date')
+  async getMaintenances(
+    @Param('date') date: string,
+    @Token() token: string
+  ) {
+    return this.structureService.getMaintenances(date, token);
+  }
+
+  @Post('maintenance-backlog/create/:condominiumId')
+  async createMaintenance(
+    @Param("condominiumId") condominiumId: string,
+    @Token() token: string,
+    @Body() body: InterventionBody
+  ) {
+    return this.structureService.createMaintenance(condominiumId, token, body)
+  }
+
+  @Put('maintenance-backlog/update/:id')
+  async updateMaintenance(
+    @Token() token: string,
+    @Param('id') maintenanceId: string,
+    @Body() body: any
+  ) {
+    return this.structureService.updateMaintenance(token, body, maintenanceId)
+  }
+
+  @Delete('maintenance-backlog/delete/:id')
+  async deleteMaintenance(
+    @Param('id') maintenanceId: string
+  ) {
+    return this.structureService.deleteMaintenance(maintenanceId)
+  }
+
+  @Get('maintenance-backlog/types/options')
+  async getMaintenancesTypesOptions() {
+    return this.structureService.getMaintenancesTypesOptions();
+  }
+  @Get('maintenance-backlog/priority/options')
+  async getPriorityOptions() {
+    return this.structureService.getPriorityOptions();
+  }
+
+  @Get('maintenance-backlog/status/options')
+  async getMaintenancesStatus() {
+    return this.structureService.getMaintenancesStatus()
+  }
+
+  @Get('maintenance-backlog/payment-methods/options')
+  async getPaymentMethodsOptions() {
+    return this.structureService.getPaymentMethodsOptions()
+  }
+
+  @Get('maintenance-backlog/areas/options/:condominiumId')
+  async getAreas(@Param('condominiumId') condominiumId: string) {
+    return this.structureService.getAreas(condominiumId);
+  }
+
+  @Get('maintenance-backlog/cards/:date')
+  async getMaintenaneCards(
+    @Param('date') date: string,
+    @Token() token: string
+  ) {
+    return this.structureService.getMaintenaneCards(date, token);
+  }
+}
