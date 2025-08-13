@@ -25,6 +25,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/schedule": "^6.0.0",
     "@supabase/supabase-js": "^2.55.0",
     "bcrypt": "^6.0.0",
     "camelcase-keys": "^9.1.3",
