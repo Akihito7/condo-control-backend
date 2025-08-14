@@ -120,14 +120,10 @@ export class FinanceService {
   async getApartmentsByCondominiumId(condominiumId: number) {
     const { data, error } = await this.supabase
       .from('apartment')
-      .select(`
-    *,
-    block:block_id (
-      *,
-      condominium_id
-    )
-  `)
-      .eq('block.condominium_id', condominiumId);
+      .select("*")
+      .eq('condominium_id', condominiumId);
+
+    console.log("apartamentos", data)
 
     if (error) {
       throw new Error(error.message)
