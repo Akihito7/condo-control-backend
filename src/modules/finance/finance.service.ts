@@ -588,14 +588,16 @@ export class FinanceService {
 
 
   async createDelinquency(condominiumId: string, data: CreateDeliquencyBodyDTO) {
+    const amountParsedBrl = parseCurrencyBRL(data.amount)
+    const amountPaidParsedBrl = parseCurrencyBRL(data.amountPaid)
     const { error } = await this.supabase.from('delinquency_records').insert([
       {
         condominium_id: condominiumId,
         apartament_id: data.apartamentId,
         category_id: data.categoryId,
         due_date: data.dueDate,
-        amount: data.amount,
-        amount_paid: data.amountPaid,
+        amount: amountParsedBrl,
+        amount_paid: amountPaidParsedBrl,
         payment_date: data.paymentDate
       }
     ])

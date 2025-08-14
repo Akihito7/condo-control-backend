@@ -1,8 +1,11 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Put, Query, Res, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Put, Query, Res, UseGuards, UseInterceptors } from "@nestjs/common";
 import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, QueryGetRegistersByCondominiumId, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody, UpdateRevenueBody, UpdateRevenueParams } from "./types/dto/finance.dto";
 import { FinanceService } from "./finance.service";
+import { Roles, RolesGuard } from "src/decorators/roles.decorator";
+import { AuthGuard } from "src/guards/auth.guard";
 
 @Controller('finance')
+@UseGuards(AuthGuard, RolesGuard)
 export class FinanceController {
 
   constructor(private readonly financeService: FinanceService) { }
@@ -140,6 +143,7 @@ export class FinanceController {
   }
 
   @Post('delinquency/create/:condominiumId')
+  @Roles('admin')
   async createDelinquency(
     @Param("condominiumId") condominiumId: string,
     @Body() body: CreateDeliquencyBodyDTO) {

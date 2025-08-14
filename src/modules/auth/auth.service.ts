@@ -4,6 +4,9 @@ import * as bcrypt from "bcrypt"
 import { v4 as uuidv4 } from 'uuid';
 import { JwtService } from "@nestjs/jwt";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
+import { flattenObject } from "src/utils/flatten-object";
+import { User } from "./types/response/auth.response";
+import camelcaseKeys from "camelcase-keys";
 
 
 type DecodeResponse = {
@@ -72,12 +75,17 @@ export class AuthService {
 
     const user = result.data?.[0];
 
+    if (result.error) {
+      throw new Error(result.error.message)
+    }
+
     if (!user) {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
     const passwordMatch = await bcrypt.compare(data.password, user.password);
 
+    console.log("password match", passwordMatch)
     if (!passwordMatch) {
       throw new UnauthorizedException('Invalid email or password.');
     }
@@ -102,10 +110,11 @@ export class AuthService {
 
     const normalizedData = {
       ...user,
+      user_association: user.user_association?.[0],
       condominiumId: user.user_association?.[0]?.condominium_id || null
     }
-
-    return normalizedData
+    const userObjectFlatten = camelcaseKeys(flattenObject(normalizedData)) as User;
+    return userObjectFlatten
 
   }
 

@@ -128,7 +128,7 @@ export class CreateDeliquencyBodyDTO {
   apartamentId: string;
   categoryId: string;
   dueDate: Date;
-  amountPaid?: Date;
+  amountPaid?: string;
   paymentDate?: string;
 }
 

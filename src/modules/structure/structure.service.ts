@@ -532,7 +532,7 @@ export class StructureService {
       start_time: data.startTime,
       end_time: data.endTime,
       condominium_area_id: data.condominiumAreaId,
-      apartment_id: userInfo.user_association?.[0]?.apartment_id,
+      apartment_id: userInfo.userAssociationApartmentId
     })
 
     if (error) throw new Error(error.message)
@@ -746,7 +746,7 @@ export class StructureService {
     const { data: maintenancePayments, error } = await this.supabase
       .from('maintenance_payments')
       .select(`*, maintenances (*)`)
-      .eq('maintenances.condominium_id', userInfo.condominiumId)
+
       .gte('payment_date', startDate)
       .lte('payment_date', endDate)
 
@@ -754,13 +754,16 @@ export class StructureService {
       throw new Error(error.message);
     }
 
+    const maintenancesPaymentsFilteredByCondominium =
+      maintenancePayments?.filter(payment => payment.maintenances.condominium_id === userInfo.condominiumId);
+
     const cardsFinance = await this.financeService.cardsFinancialEntry({
       condominiumId: userInfo.condominiumId,
       startDate,
       endDate,
     });
     const maintenancePaymentsFormatted =
-      camelcaseKeys(maintenancePayments.map(maintenance => flattenObject(maintenance))) as InterventionPayment[]
+      camelcaseKeys(maintenancesPaymentsFilteredByCondominium.map(maintenance => flattenObject(maintenance))) as InterventionPayment[]
 
     const newMonthlyFixedCosts = maintenancePaymentsFormatted.reduce((value, intervention) => {
       if (intervention.isInstallment && intervention.maintenancesStatusId === 1 || intervention.maintenanceId === 2) {
