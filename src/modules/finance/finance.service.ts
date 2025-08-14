@@ -123,8 +123,6 @@ export class FinanceService {
       .select("*")
       .eq('condominium_id', condominiumId);
 
-    console.log("apartamentos", data)
-
     if (error) {
       throw new Error(error.message)
     }
@@ -144,6 +142,7 @@ export class FinanceService {
   }
 
   async createTransaction(data: BodyTransaction) {
+    
     const amountParsedBrl = parseCurrencyBRL(String(data.amount))
     const amountPaidParsedBrl = parseCurrencyBRL(String(data.amountPaid))
 
@@ -159,7 +158,8 @@ export class FinanceService {
         observation: data.notes,
         amount: amountParsedBrl,
         is_recurring: data.recurring,
-        notes: data.notes
+        notes: data.notes,
+        payment_date : data.paymentDate,
       }
     ])
 
@@ -322,18 +322,19 @@ export class FinanceService {
   }
 
   async updateFinancialRegister(registerId: number, transaction: BodyTransaction) {
-
+    const amountParsedBrl = parseCurrencyBRL(transaction.amount)
+    const amountPaidParsedBrl = parseCurrencyBRL(transaction.amountPaid)
     const { error } = await this.supabase.from("financial_records").update([
       {
         condominium_id: transaction.condominiumId,
         category_id: transaction.categoryId,
         due_date: transaction.dueDate,
-        amount_paid: transaction.amountPaid,
+        amount_paid: amountPaidParsedBrl,
         apartament_id: transaction.apartmentId,
         status: transaction.paymentStatusId,
         payment_method_id: transaction.paymentMethodId,
         observation: transaction.notes,
-        amount: transaction.amount,
+        amount: amountParsedBrl,
         is_recurring: transaction.recurring,
         notes: transaction.notes
       }
