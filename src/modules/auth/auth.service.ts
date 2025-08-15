@@ -107,11 +107,28 @@ export class AuthService {
       .eq("id", userId);
 
     const user = resultUsers.data?.[0];
+    const userRole = user.user_association?.[0]?.role;
+
+    const { data: pagesWithPermissionByRole } = await this.supabase
+      .from('role_page_relation')
+      .select(`*, page (*)`)
+      .eq('role_name', userRole);
+
+    const { data: modulesWithPermissionByRole } = await this.supabase
+      .from('role_module_relation')
+      .select('*')
+      .eq('role_name', userRole);
+
+
+    const pagesWithPermissionByRoleFormatted = camelcaseKeys(pagesWithPermissionByRole?.map(page => flattenObject(page)) ?? []);
+    const modulesWithPermissionByRoleFormatted = camelcaseKeys(modulesWithPermissionByRole?.map(module => flattenObject(module)) ?? []);
 
     const normalizedData = {
       ...user,
       user_association: user.user_association?.[0],
-      condominiumId: user.user_association?.[0]?.condominium_id || null
+      condominiumId: user.user_association?.[0]?.condominium_id || null,
+      pagesWithPermissionByRole: pagesWithPermissionByRoleFormatted,
+      modulesWithPermissionByRole: modulesWithPermissionByRoleFormatted
     }
     const userObjectFlatten = camelcaseKeys(flattenObject(normalizedData)) as User;
     return userObjectFlatten

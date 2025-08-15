@@ -142,7 +142,6 @@ export class FinanceService {
   }
 
   async createTransaction(data: BodyTransaction) {
-    
     const amountParsedBrl = parseCurrencyBRL(String(data.amount))
     const amountPaidParsedBrl = parseCurrencyBRL(String(data.amountPaid))
 
@@ -152,7 +151,7 @@ export class FinanceService {
         category_id: data.categoryId,
         due_date: data.dueDate,
         amount_paid: amountPaidParsedBrl,
-        apartament_id: data.apartmentId,
+        apartament_id: data.apartmentId === -1 ? null : data.apartmentId,
         status: data.paymentStatusId,
         payment_method_id: data.paymentMethodId,
         observation: data.notes,
