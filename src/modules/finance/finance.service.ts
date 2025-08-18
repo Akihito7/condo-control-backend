@@ -352,9 +352,6 @@ export class FinanceService {
 
     const { startDate, endDate } = getFullMonthInterval(date);
 
-    const incomeParseBRL = parseCurrencyBRL(data.income);
-    const targetIncomeParseBRL = parseCurrencyBRL(data.targetIncome);
-
     const { data: condiminiumFinances } = await this.supabase
       .from('condominium_finances')
       .select('*')
@@ -366,8 +363,8 @@ export class FinanceService {
     if (condiminiumFinances?.length === 0) {
       const { error: createError } = await this.supabase.from('condominium_finances').insert({
         condominium_id: condominiumId,
-        income: incomeParseBRL,
-        income_target: targetIncomeParseBRL,
+        income: Number(data.income),
+        income_target: Number(data.targetIncome),
         reference_month: startDate,
       })
 
@@ -381,8 +378,8 @@ export class FinanceService {
     const condominiumFinanceId = condiminiumFinances?.[0]?.id;
 
     const { error: updateError } = await this.supabase.from('condominium_finances').update({
-      income: incomeParseBRL,
-      income_target: targetIncomeParseBRL
+      income: Number(data.income),
+      income_target: Number(data.targetIncome),
     })
       .eq('id', condominiumFinanceId)
 
@@ -397,10 +394,6 @@ export class FinanceService {
     data: UpdateCondominiumExpensesBody
   ) {
     const { startDate, endDate } = getFullMonthInterval(date);
-
-    const expenseParseBRL = parseCurrencyBRL(data.expenses);
-    const targetExpenseParseBRL = parseCurrencyBRL(data.targetExpenses);
-
     const { data: condiminiumFinances } = await this.supabase
       .from('condominium_finances')
       .select('*')
@@ -412,8 +405,8 @@ export class FinanceService {
     if (condiminiumFinances?.length === 0) {
       const { error: createError } = await this.supabase.from('condominium_finances').insert({
         condominium_id: condominiumId,
-        expenseParseBRL: expenseParseBRL,
-        expenses_target: targetExpenseParseBRL,
+        expenses: Number(data.expenses),
+        expenses_target: Number(data.targetExpenses),
         reference_month: startDate,
       })
 
@@ -424,8 +417,8 @@ export class FinanceService {
     const condominiumFinanceId = condiminiumFinances?.[0]?.id;
 
     const { error: updateError } = await this.supabase.from('condominium_finances').update({
-      expenses: expenseParseBRL,
-      expenses_target: targetExpenseParseBRL
+      expenses: Number(data.expenses),
+      expenses_target: Number(data.targetExpenses)
     })
       .eq('id', condominiumFinanceId)
 

@@ -11,6 +11,7 @@ import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { flattenObject } from "src/utils/flatten-object";
 import { FinanceService } from "../finance/finance.service";
 import { CreateEmployeeBody, EventSpace, InterventionBody, InterventionPayment, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
+import { translateComplexDurationToEnglish } from "src/utils/translation-duration-to-english";
 
 @Injectable()
 export class StructureService {
@@ -585,6 +586,7 @@ export class StructureService {
 
 
   async createMaintenance(condominiumId: string, token: string, data: InterventionBody) {
+    const durationTranslateToEnglish = translateComplexDurationToEnglish(data.duration!);
     const { userId } = await this.authService.decodeToken(token);
     const amountParseBRL = parseCurrencyBRL(data.value);
 
@@ -607,7 +609,7 @@ export class StructureService {
         condominium_id: condominiumId,
         planned_start: data.plannedStart,
         planned_end: data.plannedEnd,
-        execution_time: data.duration,
+        execution_time: durationTranslateToEnglish,
         actual_start: data.actualStart,
         actual_end: data.actualEnd,
         number_of_installments: data.numberOfInstallments,
@@ -656,6 +658,10 @@ export class StructureService {
 
     const { userId } = await this.authService.decodeToken(token);
 
+    const durationTranslateToEnglish = translateComplexDurationToEnglish(data.duration!);
+
+    console.log("duration", durationTranslateToEnglish)
+
     const userInfo = await this.authService.me(userId);
 
     const condominiumId = userInfo.condominiumId;
@@ -677,7 +683,7 @@ export class StructureService {
       condominium_id: condominiumId,
       planned_start: data.plannedStart,
       planned_end: data.plannedEnd,
-      execution_time: data.duration,
+      execution_time: durationTranslateToEnglish,
       actual_start: data.actualStart,
       actual_end: data.actualEnd
     })
