@@ -4,7 +4,6 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import camelcaseKeys from "camelcase-keys";
 import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody } from "./types/dto/finance.dto";
 import { startOfMonth, subMonths, format, differenceInMonths, isThisISOWeek, differenceInDays } from "date-fns"
-import { parseCurrencyBRL } from "src/utils/parse-currency-brl";
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { FinanceResponseData } from "./types/response/finance.response";
 
@@ -146,19 +145,17 @@ export class FinanceService {
   }
 
   async createTransaction(data: BodyTransaction) {
-    const amountParsedBrl = parseCurrencyBRL(String(data.amount))
-    const amountPaidParsedBrl = parseCurrencyBRL(String(data.amountPaid))
     const { error } = await this.supabase.from("financial_records").insert([
       {
         condominium_id: data.condominiumId,
         category_id: data.categoryId,
         due_date: data.dueDate,
-        amount_paid: amountPaidParsedBrl,
+        amount_paid: Number(data.amountPaid),
         apartament_id: data.apartmentId === -1 ? null : data.apartmentId,
         status: data.paymentStatusId,
         payment_method_id: data.paymentMethodId,
         observation: data.notes,
-        amount: amountParsedBrl,
+        amount: Number(data.amount),
         is_recurring: data.recurring,
         notes: data.notes,
         payment_date: data.paymentDate,
@@ -324,19 +321,17 @@ export class FinanceService {
   }
 
   async updateFinancialRegister(registerId: number, transaction: BodyTransaction) {
-    const amountParsedBrl = parseCurrencyBRL(transaction.amount)
-    const amountPaidParsedBrl = parseCurrencyBRL(transaction.amountPaid)
     const { error } = await this.supabase.from("financial_records").update([
       {
         condominium_id: transaction.condominiumId,
         category_id: transaction.categoryId,
         due_date: transaction.dueDate,
-        amount_paid: amountPaidParsedBrl,
+        amount_paid: Number(transaction.amountPaid),
         apartament_id: transaction.apartmentId,
         status: transaction.paymentStatusId,
         payment_method_id: transaction.paymentMethodId,
         observation: transaction.notes,
-        amount: amountParsedBrl,
+        amount: Number(transaction.amount),
         is_recurring: transaction.recurring,
         notes: transaction.notes
       }
@@ -580,16 +575,14 @@ export class FinanceService {
 
 
   async createDelinquency(condominiumId: string, data: CreateDeliquencyBodyDTO) {
-    const amountParsedBrl = parseCurrencyBRL(data.amount)
-    const amountPaidParsedBrl = parseCurrencyBRL(data.amountPaid)
     const { error } = await this.supabase.from('delinquency_records').insert([
       {
         condominium_id: condominiumId,
         apartament_id: data.apartamentId,
         category_id: data.categoryId,
         due_date: data.dueDate,
-        amount: amountParsedBrl,
-        amount_paid: amountPaidParsedBrl,
+        amount: Number(data.amount),
+        amount_paid: Number(data.amountPaid),
         payment_date: data.paymentDate
       }
     ])
@@ -671,8 +664,6 @@ export class FinanceService {
 
     let financialRecordId = finalcialRecord?.id;
 
-    const amountParsedBrl = parseCurrencyBRL(data.amount);
-    const amountPaidParsedBrl = parseCurrencyBRL(data.amountPaid);
 
     if (!hasFinancialRecord && data?.paymentDate) {
       const { data: financialRecordInsert } = await this.supabase
@@ -682,11 +673,11 @@ export class FinanceService {
             condominium_id: delinquency.condominium_id,
             category_id: data.categoryId,
             due_date: data.dueDate,
-            amount_paid: amountPaidParsedBrl,
+            amount_paid: Number(data.amountPaid),
             apartament_id: data.apartamentId,
             status: 2,
             payment_method_id: 2,
-            amount: amountParsedBrl,
+            amount: Number(data.amount),
             is_recurring: false,
             notes: undefined,
             delinquency_record_id: delinquencyId
@@ -704,16 +695,16 @@ export class FinanceService {
       await this.supabase.from('financial_records').update({
         payment_date: data.paymentDate,
         due_date: data.dueDate,
-        amount: amountParsedBrl,
-        amount_paid: amountPaidParsedBrl,
+        amount: Number(data.amount),
+        amount_paid: Number(data.amountPaid),
         category_id: data.categoryId
       })
         .eq("id", financialRecordId)
     }
 
     await this.supabase.from('delinquency_records').update({
-      amount: amountParsedBrl,
-      amount_paid: amountPaidParsedBrl,
+      amount: Number(data.amount),
+      amount_paid: Number(data.amountPaid),
       category_id: data.categoryId,
       payment_date: data.paymentDate,
       due_date: data.dueDate,

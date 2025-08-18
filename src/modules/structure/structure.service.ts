@@ -4,7 +4,6 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { AuthService } from "../auth/auth.service";
 import * as bcrypt from "bcrypt"
 import camelcaseKeys from "camelcase-keys";
-import { parseCurrencyBRL } from "src/utils/parse-currency-brl";
 import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc } from 'date-fns';
 import { id, ptBR } from 'date-fns/locale';
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
@@ -100,11 +99,11 @@ export class StructureService {
       }
     }
 
-    const salaryParseBRL = parseCurrencyBRL(salary)
+
     const { data: _, error: employeeInsertError } = await this.supabase.from('employees').insert({
       name,
       cpf,
-      salary: salaryParseBRL,
+      salary: Number(data.salary),
       employee_role_id: employeeRoleId,
       user_id: userLoginId,
       phone_number: phoneNumber,
@@ -199,7 +198,7 @@ export class StructureService {
     const { data: updateEmployee, error: updateEmployeeError } = await this.supabase.from("employees")
       .update({
         name: data.name,
-        salary: parseCurrencyBRL(data.salary),
+        salary: Number(data.salary),
         cpf: data.cpf,
         employee_role_id: data.employeeRoleId,
         phone_number: data.phoneNumber,
@@ -588,7 +587,6 @@ export class StructureService {
   async createMaintenance(condominiumId: string, token: string, data: InterventionBody) {
     const durationTranslateToEnglish = translateComplexDurationToEnglish(data.duration!);
     const { userId } = await this.authService.decodeToken(token);
-    const amountParseBRL = parseCurrencyBRL(data.value);
 
     // Inserir manutenção
     const { data: insertedMaintenances, error } = await this.supabase
@@ -598,7 +596,7 @@ export class StructureService {
         type_id: data.type,
         description: data.description,
         supplier: data.provider,
-        amount: amountParseBRL,
+        amount: Number(data.value),
         payment_method: data.paymentMethod,
         payment_date: data.paymentDate,
         payment_completion_date: data.paymentCompletionDate,
@@ -636,7 +634,7 @@ export class StructureService {
         paymentsToInsert.push({
           maintenance_id: maintenanceId,
           payment_date: paymentDate.toISOString(),
-          amount: amountParseBRL,
+          amount: Number(data.value),
           is_installment: data.isInstallment,
           created_at: new Date(),
           updated_at: new Date(),
@@ -666,13 +664,13 @@ export class StructureService {
 
     const condominiumId = userInfo.condominiumId;
 
-    const amountParseBRL = parseCurrencyBRL(data.value);
+
     const { error } = await this.supabase.from('maintenances').update({
       priority_id: data.priority,
       type_id: data.type,
       description: data.description,
       supplier: data.provider,
-      amount: amountParseBRL,
+      amount: Number(data.value),
       payment_method: data.paymentMethod,
       payment_date: data.paymentDate,
       payment_completion_date: data.paymentCompletionDate,
@@ -692,7 +690,7 @@ export class StructureService {
 
     await this.supabase.from('maintenance_payments')
       .update({
-        amount: amountParseBRL
+        amount: Number(data.value),
       })
       .eq('maintenance_id', maintenanceId);
 
