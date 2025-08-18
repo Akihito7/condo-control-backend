@@ -45,12 +45,9 @@ export class GetRegistersByCondominiumId {
 
   @IsNotEmpty()
   @IsDateString()
-  startDate: string
+  selectedDate: string
 
 
-  @IsNotEmpty()
-  @IsDateString()
-  endDate: string
 }
 
 export class QueryGetRegistersByCondominiumId {

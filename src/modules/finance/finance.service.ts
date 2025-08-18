@@ -34,7 +34,11 @@ export class FinanceService {
 
   }
 
-  async getFinancialRecordsByCondominiumId({ condominiumId, startDate, endDate, incomeExpenseOptions }: any) {
+  async getFinancialRecordsByCondominiumId({ condominiumId, selectedDate, incomeExpenseOptions }: any) {
+    const {
+      startDate,
+      endDate
+    } = getFullMonthInterval(selectedDate)
     const { data: categories } = await this.supabase
       .from('categories')
       .select('id')
@@ -60,7 +64,7 @@ export class FinanceService {
       .gte('due_date', startDate)
       .lte('due_date', endDate)
       .in('category_id', categoryIds)
-      .order('amount', { ascending: false });
+      .order('due_date', { ascending: true });
 
     if (error) {
       throw new Error(error.message)
@@ -144,7 +148,6 @@ export class FinanceService {
   async createTransaction(data: BodyTransaction) {
     const amountParsedBrl = parseCurrencyBRL(String(data.amount))
     const amountPaidParsedBrl = parseCurrencyBRL(String(data.amountPaid))
-
     const { error } = await this.supabase.from("financial_records").insert([
       {
         condominium_id: data.condominiumId,
@@ -158,7 +161,7 @@ export class FinanceService {
         amount: amountParsedBrl,
         is_recurring: data.recurring,
         notes: data.notes,
-        payment_date : data.paymentDate,
+        payment_date: data.paymentDate,
       }
     ])
 
@@ -171,7 +174,7 @@ export class FinanceService {
     condominiumId,
     startDate,
     endDate
-  }: GetRegistersByCondominiumId) {
+  }: any) {
     const [year, monthStartDate] = String(startDate).split('-');
     const [, monthEndDate] = String(endDate).split('-');
     const startDateFormatted = `${year}-${monthStartDate}-01`
@@ -231,7 +234,7 @@ export class FinanceService {
     condominiumId,
     startDate,
     endDate
-  }: GetRegistersByCondominiumId) {
+  }: any) {
     const [year, monthStartDate] = String(startDate).split('-');
     const startDateFormatted = `${year}-${monthStartDate}-01`
     const [, monthEndDate] = String(endDate).split('-');
@@ -290,7 +293,7 @@ export class FinanceService {
     condominiumId,
     endDate,
     startDate
-  }: GetRegistersByCondominiumId) {
+  }: any) {
     const [, monthStartDate] = String(startDate).split('-');
     const [, monthEndDate] = String(endDate).split('-');
     const isSameMonth = monthStartDate === monthEndDate;

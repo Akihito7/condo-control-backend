@@ -10,6 +10,18 @@ export class FinanceController {
 
   constructor(private readonly financeService: FinanceService) { }
 
+
+  @Get('registers/:condominiumId/:selectedDate')
+  async getRegistersByCondominiumId(@Param() param: GetRegistersByCondominiumId, @Query() query: QueryGetRegistersByCondominiumId) {
+    const incomeExpenseOptions = query["incomeExpenseOptionsSelectedId[]"];
+    const incomeExpenseOptionsFormatted = Array.isArray(incomeExpenseOptions)
+      ? incomeExpenseOptions.map(Number)
+      : [incomeExpenseOptions].map(Number)
+    const filters = { ...param, incomeExpenseOptions: incomeExpenseOptionsFormatted }
+    return this.financeService
+      .getFinancialRecordsByCondominiumId(filters);
+  }
+
   @Get('/delinquency/:condominiumId/:date')
   async getDelinquencyRegister(@Param() param: GetDelinquencyParamsDTO) {
     return this.financeService.getDelinquencyRegister(param)
@@ -37,17 +49,6 @@ export class FinanceController {
       message: 'Finance record created (mock)',
       condominiumId: id,
     };
-  }
-
-  @Get('registers/:condominiumId/:startDate/:endDate')
-  async getRegistersByCondominiumId(@Param() param: GetRegistersByCondominiumId, @Query() query: QueryGetRegistersByCondominiumId) {
-    const incomeExpenseOptions = query["incomeExpenseOptionsSelectedId[]"];
-    const incomeExpenseOptionsFormatted = Array.isArray(incomeExpenseOptions)
-      ? incomeExpenseOptions.map(Number)
-      : [incomeExpenseOptions].map(Number)
-    const filters = { ...param, incomeExpenseOptions: incomeExpenseOptionsFormatted }
-    return this.financeService
-      .getFinancialRecordsByCondominiumId(filters);
   }
 
   @Get('categories-options')
