@@ -63,7 +63,7 @@ export class FinanceService {
       .gte('due_date', startDate)
       .lte('due_date', endDate)
       .in('category_id', categoryIds)
-      .order('due_date', { ascending: true });
+      .order('due_date', { ascending: false });
 
     if (error) {
       throw new Error(error.message)
