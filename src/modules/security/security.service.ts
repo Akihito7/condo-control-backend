@@ -20,7 +20,7 @@ export class SecurityService {
     const { data: apartaments, error: apartamentsError } = await this.supabase
       .from('apartment')
       .select("*")
-      .eq('apartment_number', apartamentNumber)
+      .eq('id', apartamentNumber)
       .eq('condominium_id', condominiumId)
 
     if (apartamentsError) {
