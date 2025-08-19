@@ -524,15 +524,13 @@ export class StructureService {
     await this.supabase.from('space_events').delete().eq('id', eventId)
   }
 
-  async createEventSpace(data: any, token: string) {
-    const { userId } = await this.authService.decodeToken(token);
-    const userInfo = await this.authService.me(userId);
+  async createEventSpace(data: any) {
     const { error } = await this.supabase.from('space_events').insert({
       event_date: data.eventDate,
       start_time: data.startTime,
       end_time: data.endTime,
       condominium_area_id: data.condominiumAreaId,
-      apartment_id: userInfo.userAssociationApartmentId
+      apartment_id: data.apartmentId
     })
 
     if (error) throw new Error(error.message)

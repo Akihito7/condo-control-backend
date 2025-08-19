@@ -92,9 +92,8 @@ export class StructureController {
 
   @Post('management-spaces/events/create')
   async createEventSpace(
-    @Token() token: string,
     @Body() body: any) {
-    return this.structureService.createEventSpace(body, token)
+    return this.structureService.createEventSpace(body)
   }
 
   @Get('maintenance-backlog/:date')
