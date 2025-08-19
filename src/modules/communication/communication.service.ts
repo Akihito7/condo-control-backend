@@ -432,7 +432,7 @@ export class CommunicationService {
     const { data: apartaments, error: apartamentsError } = await this.supabase.from('apartment')
       .select("*")
       .eq('condominium_id', condominiumId)
-      .eq('apartment_number', apartment);
+      .eq('id', apartment);
 
     if (apartamentsError) {
       throw new Error(apartamentsError.message)
@@ -501,7 +501,7 @@ export class CommunicationService {
     const { data: apartaments, error: apartamentsError } = await this.supabase.from('apartment')
       .select("*")
       .eq('condominium_id', condominiumId)
-      .eq('apartment_number', apartment);
+      .eq('id', apartment);
 
     if (apartamentsError) {
       throw new Error(apartamentsError.message)
