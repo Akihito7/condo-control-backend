@@ -709,7 +709,7 @@ export class CommunicationService {
     const startDate = new Date();
     const { userId } = await this.authService.decodeToken(token);
     const user = await this.authService.me(userId)
-    const { error } = await this.supabase.from('polls').insert({
+    const { data: polls, error } = await this.supabase.from('polls').insert({
       start_date: startDate,
       end_date: data.endDate,
       created_at: startDate,
@@ -717,8 +717,22 @@ export class CommunicationService {
       description: data.description,
       condominium_id: user.condominiumId,
       status: 'Aberto',
-    })
-    if (error) throw new Error(error.message)
+    }).select('id')
+    if (error) throw new Error(error.message);
+
+    const pollIdInserted = polls?.[0]?.id;
+
+    if (pollIdInserted) {
+      await Promise.all(
+        data.options.map(async (option) => {
+          return this.supabase
+            .from('polls_options')
+            .insert({
+              name: option.name,
+              poll_id: pollIdInserted,
+            })
+        }))
+    }
   }
 
   async updateAssemblyVirtualPoll(
