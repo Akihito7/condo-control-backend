@@ -3,7 +3,7 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { SupabaseClient } from "@supabase/supabase-js";
 import camelcaseKeys from "camelcase-keys";
 import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody } from "./types/dto/finance.dto";
-import { startOfMonth, subMonths, format, differenceInMonths, isThisISOWeek, differenceInDays } from "date-fns"
+import { startOfMonth, subMonths, format, differenceInMonths, isThisISOWeek, differenceInDays, addMonths } from "date-fns"
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { FinanceResponseData } from "./types/response/finance.response";
 
@@ -182,7 +182,60 @@ export class FinanceService {
       .select("*")
       .eq("condominium_id", condominiumId)
       .gte('reference_month', startDateFormatted)
-      .lte('reference_month', endDate)
+      .lte('reference_month', endDate);
+
+
+    let accumulatedBalance = 0;
+
+
+    let start = new Date(startDateFormatted);
+    let end = new Date(endDate);
+    let current = new Date(start.getFullYear(), 0, 1);
+    end = new Date(end.getFullYear(), 11, 31);
+
+    while (current <= end) {
+      const monthKey = format(current, "yyyy-MM-dd");
+      console.log(monthKey)
+
+      // tenta pegar o saldo do mês em condominium_finances
+      const { data: monthFinance } = await this.supabase
+        .from("condominium_finances")
+        .select("*")
+        .eq("condominium_id", condominiumId)
+        .eq("reference_month", monthKey);
+
+      let monthIncome = monthFinance?.[0]?.income ?? null;
+
+      if (monthIncome == null) {
+        // se não tiver, calcular pelas financial_records
+        const { data: records } = await this.supabase
+          .from("financial_records")
+          .select(`
+          amount_paid,
+          categories (income_expense_type_id)
+        `)
+          .eq("is_deleted", false)
+          .eq("condominium_id", condominiumId)
+          .gte("due_date", format(current, "yyyy-MM-01"))
+          .lte(
+            "due_date",
+            format(new Date(current.getFullYear(), current.getMonth() + 1, 0), "yyyy-MM-dd")
+          );
+
+
+        const INCOME_TYPE_ID = 4;
+        monthIncome =
+          records?.reduce((total, register: any) => {
+            if (register.categories.income_expense_type_id === INCOME_TYPE_ID) {
+              return total + register.amount_paid;
+            }
+            return total;
+          }, 0) ?? 0;
+      }
+
+      accumulatedBalance += monthIncome;
+      current = addMonths(current, 1);
+    }
 
     const totalIncomeFromCondiminiumFinances = incomes?.[0]?.income ?? 0
     const incomeTarget = incomes?.[0]?.income_target ?? undefined
@@ -190,7 +243,8 @@ export class FinanceService {
     if (totalIncomeFromCondiminiumFinances) {
       return {
         totalIncome: totalIncomeFromCondiminiumFinances,
-        incomeTarget: isSameMonth ? incomeTarget : undefined
+        incomeTarget: isSameMonth ? incomeTarget : undefined,
+        accumulatedBalance
       }
     }
 
@@ -224,6 +278,7 @@ export class FinanceService {
     return {
       totalIncome: totalIncomeFromRegisters,
       incomeTarget: isSameMonth ? incomeTarget : undefined,
+      accumulatedBalance
     }
   }
 
@@ -294,7 +349,7 @@ export class FinanceService {
     const [, monthStartDate] = String(startDate).split('-');
     const [, monthEndDate] = String(endDate).split('-');
     const isSameMonth = monthStartDate === monthEndDate;
-    const { totalIncome, incomeTarget } = await this.getRevenueTotal({ condominiumId, startDate, endDate });
+    const { totalIncome, incomeTarget, accumulatedBalance } = await this.getRevenueTotal({ condominiumId, startDate, endDate });
     const { totalExpenses, expensesTarget } = await this.getExpensesTotal({ condominiumId, startDate, endDate });
     const balance = totalIncome - totalExpenses
     return {
@@ -303,7 +358,8 @@ export class FinanceService {
       totalExpenses,
       expensesTarget,
       balance,
-      isSameMonth
+      isSameMonth,
+      accumulatedBalance
     }
   }
 
