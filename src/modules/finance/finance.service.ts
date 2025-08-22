@@ -195,7 +195,7 @@ export class FinanceService {
 
     while (current <= end) {
       const monthKey = format(current, "yyyy-MM-dd");
-      console.log(monthKey)
+      console.log(monthKey);
 
       // tenta pegar o saldo do mês em condominium_finances
       const { data: monthFinance } = await this.supabase
@@ -205,15 +205,16 @@ export class FinanceService {
         .eq("reference_month", monthKey);
 
       let monthIncome = monthFinance?.[0]?.income ?? null;
+      let monthExpense = monthFinance?.[0]?.expense ?? null; // <- se existir no condomínio
 
-      if (monthIncome == null) {
+      if (monthIncome == null || monthExpense == null) {
         // se não tiver, calcular pelas financial_records
         const { data: records } = await this.supabase
           .from("financial_records")
           .select(`
-          amount_paid,
-          categories (income_expense_type_id)
-        `)
+        amount_paid,
+        categories (income_expense_type_id)
+      `)
           .eq("is_deleted", false)
           .eq("condominium_id", condominiumId)
           .gte("due_date", format(current, "yyyy-MM-01"))
@@ -222,21 +223,31 @@ export class FinanceService {
             format(new Date(current.getFullYear(), current.getMonth() + 1, 0), "yyyy-MM-dd")
           );
 
-
         const INCOME_TYPE_ID = 4;
+        const EXPENSE_TYPE_ID = 6;
+
         monthIncome =
           records?.reduce((total, register: any) => {
-            if (register.categories.income_expense_type_id === INCOME_TYPE_ID) {
+            if (register.categories?.income_expense_type_id === INCOME_TYPE_ID) {
+              return total + register.amount_paid;
+            }
+            return total;
+          }, 0) ?? 0;
+
+        monthExpense =
+          records?.reduce((total, register: any) => {
+            if (register.categories?.income_expense_type_id === EXPENSE_TYPE_ID) {
               return total + register.amount_paid;
             }
             return total;
           }, 0) ?? 0;
       }
 
-      accumulatedBalance += monthIncome;
+      // saldo do mês (receitas - despesas)
+      accumulatedBalance += monthIncome - monthExpense;
+
       current = addMonths(current, 1);
     }
-
     const totalIncomeFromCondiminiumFinances = incomes?.[0]?.income ?? 0
     const incomeTarget = incomes?.[0]?.income_target ?? undefined
 
