@@ -205,26 +205,24 @@ export class FinanceService {
         .eq("reference_month", monthKey);
 
       let monthIncome = monthFinance?.[0]?.income ?? null;
-      let monthExpense = monthFinance?.[0]?.expense ?? null; // <- se existir no condomínio
-
-      if (monthIncome == null || monthExpense == null) {
-        // se não tiver, calcular pelas financial_records
-        const { data: records } = await this.supabase
-          .from("financial_records")
-          .select(`
+      let monthExpense = monthFinance?.[0]?.expenses ?? null; // <- se existir no condomínio
+      const { data: records } = await this.supabase
+        .from("financial_records")
+        .select(`
         amount_paid,
         categories (income_expense_type_id)
       `)
-          .eq("is_deleted", false)
-          .eq("condominium_id", condominiumId)
-          .gte("due_date", format(current, "yyyy-MM-01"))
-          .lte(
-            "due_date",
-            format(new Date(current.getFullYear(), current.getMonth() + 1, 0), "yyyy-MM-dd")
-          );
+        .eq("is_deleted", false)
+        .eq("condominium_id", condominiumId)
+        .gte("due_date", format(current, "yyyy-MM-01"))
+        .lte(
+          "due_date",
+          format(new Date(current.getFullYear(), current.getMonth() + 1, 0), "yyyy-MM-dd")
+        );
 
+      if (monthIncome == null) {
+        // se não tiver, calcular pelas financial_records
         const INCOME_TYPE_ID = 4;
-        const EXPENSE_TYPE_ID = 6;
 
         monthIncome =
           records?.reduce((total, register: any) => {
@@ -233,7 +231,10 @@ export class FinanceService {
             }
             return total;
           }, 0) ?? 0;
+      }
 
+      if (monthExpense == null) {
+        const EXPENSE_TYPE_ID = 6;
         monthExpense =
           records?.reduce((total, register: any) => {
             if (register.categories?.income_expense_type_id === EXPENSE_TYPE_ID) {
@@ -241,6 +242,7 @@ export class FinanceService {
             }
             return total;
           }, 0) ?? 0;
+
       }
 
       // saldo do mês (receitas - despesas)
