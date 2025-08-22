@@ -540,12 +540,10 @@ export class StructureService {
     const { userId } = await this.authService.decodeToken(token);
     const userInfo = await this.authService.me(userId);
 
-    console.log("date", date);
 
     const condominiumId = userInfo.condominiumId;
     const { startDate, endDate } = getFullMonthInterval(date);
 
-    console.log("startDate", startDate, "endDate", endDate);
 
     // Buscar todas as manutenções com seus payments sem filtro no supabase
     const { data: maintenances, error: maintenancesError } = await this.supabase
@@ -577,7 +575,6 @@ export class StructureService {
     // Se precisar formatar camelCase e flatten, adapte aqui
     const maintenancesFormatted: any[] = camelcaseKeys(filteredMaintenances.map(maintenance => flattenObject(maintenance)));
 
-    maintenancesFormatted.map(item => console.log(item.maintenancePayments));
     return maintenancesFormatted;
   }
 
@@ -655,8 +652,6 @@ export class StructureService {
     const { userId } = await this.authService.decodeToken(token);
 
     const durationTranslateToEnglish = translateComplexDurationToEnglish(data.duration!);
-
-    console.log("duration", durationTranslateToEnglish)
 
     const userInfo = await this.authService.me(userId);
 

@@ -1,8 +1,8 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, VersioningType } from "@nestjs/common";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { BodyOpeningCalls, ParamOpeningCalls } from "./types/dto/communication.dto";
-import { differenceInMinutes } from 'date-fns';
+import { differenceInMinutes, isBefore } from 'date-fns';
 import camelcaseKeys from "camelcase-keys";
 import { flattenObject } from "../../utils/flatten-object"
 import { v4 } from "uuid";
@@ -637,7 +637,9 @@ export class CommunicationService {
     } = getFullMonthInterval(filters.date);
     const { data: polls, error: pollsError } = await this.supabase
       .from('polls')
-      .select('*')
+      .select(`*,
+        polls_options (*)
+        `)
       .eq('condominium_id', filters.condominiumId)
       .gte('start_date', `${startDate}T00:00:00.000Z`)
       .lt('start_date', `${endDate}T23:59:59.999Z`);
@@ -650,54 +652,81 @@ export class CommunicationService {
     const pollsWithVote = await Promise.all(polls?.map(async poll => {
       const { data: votes, error: votesError } = await this.supabase
         .from("polls_user_relation")
-        .select("*")
+        .select(`*, polls_options (*)`)
         .eq('poll_id', poll.id);
       if (votesError) {
         return null
       }
+
+      const votesFormatted = camelcaseKeys(votes.map(vote => flattenObject(vote))) as any
+
+      let votesInfo: any = [];
+      votesFormatted.forEach((vote: any) => {
+        const hasVoteInfo = votesInfo.find(voteInfo => voteInfo.optionId === vote.optionId);
+
+
+        if (!hasVoteInfo) {
+          votesInfo = [
+            ...votesInfo,
+            {
+              optionId: vote.optionId,
+              optionName: vote.pollsOptionsName,
+              total: 1
+            }
+          ]
+        } else {
+          const indexCurrentVote = votesFormatted.findIndex(vote => vote.optionId === hasVoteInfo.optionId)
+          votesInfo[indexCurrentVote] = {
+            ...hasVoteInfo,
+            total: hasVoteInfo.total + 1
+          }
+        }
+      })
+
       const totalVotes = votes.length;
-      const totalVotesYes = votes.filter(vote => vote.choice.toLowerCase() === 'sim').length;
-      const totalVotesNo = votes.filter(vote => vote.choice.toLowerCase() === 'não').length;
-      const percentageYes = totalVotes > 0 ? (totalVotesYes / totalVotes) * 100 : 0;
-      const percentageNo = totalVotes > 0 ? (totalVotesNo / totalVotes) * 100 : 0;
       const currentUserAlreadyVoted = votes.some(vote => vote.user_id === userId);
-      const currentVoteUser = votes.find(vote => vote.user_id === userId) ? votes.find(vote => vote.user_id === userId).choice : null;
+      const currentVoteUser = votesFormatted.find(vote => vote.userId === userId) ? votesFormatted.find(vote => vote.userId === userId).optionId : null;
 
       return {
         ...poll,
         totalVotes,
-        totalVotesYes,
-        totalVotesNo,
-        percentageYes,
-        percentageNo,
         currentUserAlreadyVoted,
-        currentVoteUser
+        currentVoteUser,
+        votesInfo,
       }
     }));
 
     return camelcaseKeys(pollsWithVote)
   }
 
+
+  async getOptionsVoteByPoll(pollId: string) {
+    const { data } = await this.supabase.from("polls_options")
+      .select(`*`)
+      .eq('poll_id', pollId);
+    return data;
+  }
+
+
   async createVoteAssemblyVirtualPoll(
     pollId: string,
-    body: { choice: string },
+    data: { choice: string },
     token: string) {
     const { data: polls } = await this.supabase.from("polls").select("*").eq("id", pollId);
     const currentPoll = polls?.[0];
-    /*    const alreadyFinished = isBefore(new Date(currentPoll.end_date), new Date());
-       if (alreadyFinished) {
-         throw new Error('Enquete encerrada.')
-       } */
+    const alreadyFinished = isBefore(new Date(currentPoll.end_date), new Date());
+    if (alreadyFinished) {
+      throw new Error('Enquete encerrada.')
+    }
     const { userId } = await this.authService.decodeToken(token);
     const user = await this.authService.me(userId);
-    const choiceFormmated = body.choice.toUpperCase();
     const { error: voteInsertError } = await this.supabase
       .from("polls_user_relation")
       .insert({
         poll_id: pollId,
         user_id: userId,
         condominium_id: user.condominiumId,
-        choice: choiceFormmated
+        option_id: data.choice
       })
     if (voteInsertError) throw new Error(voteInsertError.message);
   }
@@ -740,6 +769,7 @@ export class CommunicationService {
     data: any,
     token: string
   ) {
+    console.log("aa", data)
     const { error } = await this.supabase.from('polls').update({
       end_date: data.endDate,
       title: data.title,
@@ -747,7 +777,34 @@ export class CommunicationService {
       updated_at: new Date()
     })
       .eq('id', pollId)
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message);
+
+    if (data.optionsToRemove.length > 0) {
+      await Promise.all(data.optionsToRemove.map(async (option) => {
+        await this.supabase.from("polls_user_relation").delete().eq('option_id', option)
+        await this.supabase.from('polls_options').delete().eq('id', option)
+      }));
+    }
+
+    if (data.options.length > 0) {
+      console.log(data.options)
+      const optionsToUpdate = data.options.filter(option => option.optionId > 0)
+      const optionsToAdd = data.options.filter(option => option.optionId < 0)
+      console.log("pra add", optionsToUpdate, optionsToAdd)
+
+      await Promise.all(optionsToUpdate.map(async option => {
+        await this.supabase.from("polls_options").update({
+          name: option.name
+        }).eq('id', option.optionId)
+      }))
+
+      await Promise.all(optionsToAdd.map(async option => {
+        await this.supabase.from('polls_options').insert({
+          name: option.name,
+          poll_id: pollId,
+        })
+      }))
+    }
   }
 
   async deleteAssemblyVirtualPoll(pollId: string) {
@@ -770,41 +827,13 @@ export class CommunicationService {
 
     if (error) throw new Error(error.message);
 
+    console.log("POOLS TO FINISHED", pollsToFinished)
+
     await Promise.all(pollsToFinished?.map(async (poll) => {
-      const { data: votes, error: votesError } = await this.supabase
-        .from('polls_user_relation')
-        .select('choice')
-        .eq('poll_id', poll.id);
-
-      if (votesError) throw new Error(votesError.message);
-
-      // Contagem dos votos
-      const counts = votes?.reduce(
-        (acc, vote) => {
-          const choice = vote.choice.toUpperCase();
-          if (choice === 'SIM') acc.sim += 1;
-          else if (choice === 'NÃO') acc.nao += 1;
-          return acc;
-        },
-        { sim: 0, nao: 0 }
-      ) || { sim: 0, nao: 0 };
-
-      // Definindo resultado final
-      let resultFinal = '';
-      if (counts.sim > counts.nao) {
-        resultFinal = 'SIM';
-      } else if (counts.nao > counts.sim) {
-        resultFinal = 'NÃO';
-      } else {
-        resultFinal = 'EMPATE'; // ou '', ou 'Indefinido', como preferir
-      }
-
-      // Atualizando enquete com status e resultado final
       const { error: updateError } = await this.supabase
         .from('polls')
         .update({
-          status: 'Encerrado',
-          final_result: resultFinal,
+          status: 'Encerrado'
         })
         .eq('id', poll.id);
 

@@ -9,6 +9,11 @@ import { Token } from "src/decorators/token.decorator";
 export class CommunicationController {
   constructor(private readonly communicationSerivce: CommunicationService) { }
 
+  @Get('assembly-virtual/polls/vote-options/:pollId')
+  async getOptionsVoteByPoll(@Param('pollId') pollId: string) {
+    return this.communicationSerivce.getOptionsVoteByPoll(pollId)
+  }
+
   @Get('opening-calls/options/status')
   async getOptionsStatusOpeningCalls() {
     return this.communicationSerivce.getOptionsStatusOpeningCalls()
@@ -154,7 +159,7 @@ export class CommunicationController {
     return this.communicationSerivce.createAssemblyVirtualPoll(body, token)
   }
 
-  @Post('assembly-virtual/polls/update/:pollId')
+  @Put('assembly-virtual/polls/update/:pollId')
   async updateAssemblyVirtualPoll(
     @Param("pollId") pollId: string,
     @Body() body: any,
@@ -167,5 +172,4 @@ export class CommunicationController {
   async deleteAssemblyVirtualPoll(@Param("pollId") pollId: string,) {
     return this.communicationSerivce.deleteAssemblyVirtualPoll(pollId)
   }
-
 }

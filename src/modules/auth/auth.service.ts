@@ -85,7 +85,7 @@ export class AuthService {
 
     const passwordMatch = await bcrypt.compare(data.password, user.password);
 
-    console.log("password match", passwordMatch)
+
     if (!passwordMatch) {
       throw new UnauthorizedException('Invalid email or password.');
     }
