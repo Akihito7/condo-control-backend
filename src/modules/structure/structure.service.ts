@@ -622,6 +622,8 @@ export class StructureService {
       const initialDate = new Date(data.paymentDate);
       const numberOfInstallments = data.numberOfInstallments ?? 1
 
+      const installmentValue = Number(data.value) / numberOfInstallments;
+
       for (let i = 0; i < numberOfInstallments; i++) {
         const paymentDate = new Date(initialDate);
         paymentDate.setMonth(paymentDate.getMonth() + i); // soma i meses
@@ -629,7 +631,7 @@ export class StructureService {
         paymentsToInsert.push({
           maintenance_id: maintenanceId,
           payment_date: paymentDate.toISOString(),
-          amount: Number(data.value),
+          amount: installmentValue,
           is_installment: data.isInstallment,
           created_at: new Date(),
           updated_at: new Date(),
@@ -657,7 +659,6 @@ export class StructureService {
 
     const condominiumId = userInfo.condominiumId;
 
-
     const { error } = await this.supabase.from('maintenances').update({
       priority_id: data.priority,
       type_id: data.type,
@@ -681,9 +682,10 @@ export class StructureService {
       .eq('id', maintenanceId);
 
 
+    const installmentValue = Number(data.value) / data.numberOfInstallments
     await this.supabase.from('maintenance_payments')
       .update({
-        amount: Number(data.value),
+        amount: Number(installmentValue),
       })
       .eq('maintenance_id', maintenanceId);
 
@@ -770,7 +772,7 @@ export class StructureService {
     }, 0);
 
     const approvedImprovementsCost = maintenancePaymentsFormatted.reduce((value, intervention) => {
-      return value += intervention.amount;
+      return value += intervention.maintenancesAmount;
     }, 0);
 
     const result = {
