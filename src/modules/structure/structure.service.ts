@@ -85,6 +85,10 @@ export class StructureService {
         .select("id")
         .eq('email', email);
 
+      if (usersError) {
+        throw new Error(usersError.message)
+      }
+
       userLoginId = users?.[0]?.id;
 
       const { data: _, error: userAssociationError } = await this.supabase.from('user_association').insert({
@@ -98,7 +102,6 @@ export class StructureService {
         throw new Error(userAssociationError.message)
       }
     }
-
 
     const { data: _, error: employeeInsertError } = await this.supabase.from('employees').insert({
       name,

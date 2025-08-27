@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { CommunicationService } from "./communication.service";
-import { BodyOpeningCalls, ParamOpeningCalls } from "./types/dto/communication.dto";
+import { BodyCreateEvent, BodyOpeningCalls, ParamOpeningCalls } from "./types/dto/communication.dto";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import { AuthGuard } from "src/guards/auth.guard";
 import { Token } from "src/decorators/token.decorator";
@@ -171,5 +171,21 @@ export class CommunicationController {
   @Delete('assembly-virtual/polls/delete/:pollId')
   async deleteAssemblyVirtualPoll(@Param("pollId") pollId: string,) {
     return this.communicationSerivce.deleteAssemblyVirtualPoll(pollId)
+  }
+
+  @Get('schedule/:condominiumId/:date')
+  async getScheduleCondomnium(@Param() params: any) {
+    const { condominiumId, date } = params;
+    return this.communicationSerivce.getScheduleCondomnium({
+      condominiumId,
+      date
+    })
+  }
+
+  @Post('schedule')
+  async createEventCondominium(
+    @Token() token: string,
+    @Body() body: BodyCreateEvent) {
+    return this.communicationSerivce.createEventCondominium(token, body);
   }
 }

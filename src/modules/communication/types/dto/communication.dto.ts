@@ -35,3 +35,13 @@ export class BodyOpeningCalls {
   @IsString()
   resolvedDate?: string;
 }
+
+export class BodyCreateEvent {
+ title: string;
+  type: string;
+  location: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  date: string;
+}

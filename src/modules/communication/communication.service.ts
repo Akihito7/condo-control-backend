@@ -1,8 +1,8 @@
 import { BadRequestException, Inject, Injectable, VersioningType } from "@nestjs/common";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
-import { BodyOpeningCalls, ParamOpeningCalls } from "./types/dto/communication.dto";
-import { differenceInMinutes, isBefore } from 'date-fns';
+import { BodyCreateEvent, BodyOpeningCalls, ParamOpeningCalls } from "./types/dto/communication.dto";
+import { differenceInMinutes, format, isBefore } from 'date-fns';
 import camelcaseKeys from "camelcase-keys";
 import { flattenObject } from "../../utils/flatten-object"
 import { v4 } from "uuid";
@@ -10,6 +10,7 @@ import { normalizeFileName } from "src/utils/normalize-file-name";
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { AuthService } from "../auth/auth.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
+import { ptBR } from "date-fns/locale";
 
 @Injectable()
 export class CommunicationService {
@@ -816,6 +817,72 @@ export class CommunicationService {
       .eq('id', pollId);
   }
 
+  async getScheduleCondomnium({
+    date,
+    condominiumId
+  }: { date: string, condominiumId: number }) {
+    const { endDate }
+      = getFullMonthInterval(date);
+
+    const [year, month, endDay] = endDate.split('-');
+
+    const { data: events, error, } = await this.supabase
+      .from("event")
+      .select("*")
+      .eq("condominium_id", condominiumId)
+
+    let result: {
+      dayNumber: number
+      dayName: string,
+      events: any[] | undefined
+    }[] = [];
+
+    const eventsCamelkeys = camelcaseKeys(events ?? [], { deep: true })
+
+    for (let i = 0; i < Number(endDay); i++) {
+      const dateFormattedToDay = `${year}-${month}-${(i + 1).toString().padStart(2, '0')}`
+      const eventsFiltered = eventsCamelkeys?.filter(event => event.startTime.includes(dateFormattedToDay));
+      const dayName = format(`${dateFormattedToDay}T00:00:00`, "EEEE", { locale: ptBR });
+
+      const eventDay = {
+        date: dateFormattedToDay,
+        dayNumber: i + 1,
+        dayName,
+        events: eventsFiltered
+      }
+      result.push(eventDay)
+    }
+
+    return result;
+  }
+
+  async createEventCondominium(token: string, data: BodyCreateEvent) {
+    console.log(token, data);
+    const { userId } = await this.authService.decodeToken(token);
+    const {
+      condominiumId
+    } = await this.authService.me(userId);
+
+    const startTimeFormatted = `${data.date} ${data.startTime}`
+    const endTimeFormatted = `${data.date} ${data.endTime}`
+
+    const { data: events, error } = await this.supabase.from('event').insert({
+      title: data.title,
+      description: data.description,
+      start_time: startTimeFormatted,
+      end_time: endTimeFormatted,
+      condominium_id: condominiumId,
+      created_at: new Date(),
+      created_by: userId,
+    }).select('*');
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return events[0]
+  }
+
   @Cron(CronExpression.EVERY_10_SECONDS)
   async finishPoll() {
     const currentDate = new Date().toISOString();
@@ -826,8 +893,6 @@ export class CommunicationService {
       .lt('end_date', currentDate);
 
     if (error) throw new Error(error.message);
-
-    console.log("POOLS TO FINISHED", pollsToFinished)
 
     await Promise.all(pollsToFinished?.map(async (poll) => {
       const { error: updateError } = await this.supabase
