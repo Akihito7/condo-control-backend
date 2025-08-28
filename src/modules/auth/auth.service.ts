@@ -116,20 +116,33 @@ export class AuthService {
 
     const { data: modulesWithPermissionByRole } = await this.supabase
       .from('role_module_relation')
-      .select('*')
+      .select(`*, module (*)`)
       .eq('role_name', userRole);
 
 
     const pagesWithPermissionByRoleFormatted = camelcaseKeys(pagesWithPermissionByRole?.map(page => flattenObject(page)) ?? []);
     const modulesWithPermissionByRoleFormatted = camelcaseKeys(modulesWithPermissionByRole?.map(module => flattenObject(module)) ?? []);
 
+    const tabStructure = modulesWithPermissionByRoleFormatted
+      .filter((module : any) => !!module.read)
+      .map((module: any) => {
+        const pagesToThisModule = pagesWithPermissionByRoleFormatted.filter((page: any) => page.pageModuleId === module.moduleId && !!page.read);
+        return {
+          moduleId: module.moduleId,
+          moduleName: module.moduleName,
+          moduleRoutePath: module.moduleRoutePath,
+          modulePages: pagesToThisModule,
+        }
+      })
     const normalizedData = {
       ...user,
       user_association: user.user_association?.[0],
       condominiumId: user.user_association?.[0]?.condominium_id || null,
       pagesWithPermissionByRole: pagesWithPermissionByRoleFormatted,
-      modulesWithPermissionByRole: modulesWithPermissionByRoleFormatted
+      modulesWithPermissionByRole: modulesWithPermissionByRoleFormatted,
+      tabStructure
     }
+
     const userObjectFlatten = camelcaseKeys(flattenObject(normalizedData)) as User;
     return userObjectFlatten
 
