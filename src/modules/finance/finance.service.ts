@@ -195,8 +195,6 @@ export class FinanceService {
 
     while (current <= end) {
       const monthKey = format(current, "yyyy-MM-dd");
-      console.log(monthKey);
-
       // tenta pegar o saldo do mês em condominium_finances
       const { data: monthFinance } = await this.supabase
         .from("condominium_finances")

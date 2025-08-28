@@ -770,7 +770,6 @@ export class CommunicationService {
     data: any,
     token: string
   ) {
-    console.log("aa", data)
     const { error } = await this.supabase.from('polls').update({
       end_date: data.endDate,
       title: data.title,
@@ -788,10 +787,8 @@ export class CommunicationService {
     }
 
     if (data.options.length > 0) {
-      console.log(data.options)
       const optionsToUpdate = data.options.filter(option => option.optionId > 0)
       const optionsToAdd = data.options.filter(option => option.optionId < 0)
-      console.log("pra add", optionsToUpdate, optionsToAdd)
 
       await Promise.all(optionsToUpdate.map(async option => {
         await this.supabase.from("polls_options").update({
@@ -857,7 +854,6 @@ export class CommunicationService {
   }
 
   async createEventCondominium(token: string, data: BodyCreateEvent) {
-    console.log(token, data);
     const { userId } = await this.authService.decodeToken(token);
     const {
       condominiumId
@@ -872,15 +868,44 @@ export class CommunicationService {
       start_time: startTimeFormatted,
       end_time: endTimeFormatted,
       condominium_id: condominiumId,
+      type: data.type,
       created_at: new Date(),
       created_by: userId,
+      area: data.location
     }).select('*');
 
     if (error) {
       throw new Error(error.message)
     }
 
-    return events[0]
+    return camelcaseKeys(events[0])
+  }
+
+  async updateEventCondominium(eventId: string, data: BodyCreateEvent) {
+    const startTimeFormatted = `${data.date} ${data.startTime}`
+    const endTimeFormatted = `${data.date} ${data.endTime}`
+
+    const { error } = await this.supabase
+      .from('event')
+      .update({
+        title: data.title,
+        description: data.description,
+        start_time: startTimeFormatted,
+        end_time: endTimeFormatted,
+        area: data.location,
+        updated_at: new Date(),
+        type: data.type,
+      })
+      .eq('id', eventId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+  }
+
+  async deleteEventCondominium(eventId: string) {
+    await this.supabase.from('event').delete().eq('id', eventId)
   }
 
   @Cron(CronExpression.EVERY_10_SECONDS)

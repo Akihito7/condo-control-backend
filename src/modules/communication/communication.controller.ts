@@ -188,4 +188,16 @@ export class CommunicationController {
     @Body() body: BodyCreateEvent) {
     return this.communicationSerivce.createEventCondominium(token, body);
   }
+
+  @Put('schedule/:id')
+  async updateEventCondominium(
+    @Param('id') eventId: string,
+    @Body() body: BodyCreateEvent) {
+    return this.communicationSerivce.updateEventCondominium(eventId, body)
+  }
+
+  @Delete('schedule/:id')
+  async deleteEventCondominium(@Param('id') eventId: string) {
+    return this.communicationSerivce.deleteEventCondominium(eventId)
+  }
 }
