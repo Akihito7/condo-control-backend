@@ -785,4 +785,20 @@ export class StructureService {
     }
     return result
   }
+
+  async getAssetsCategoryOptions() {
+    const { data, error } = await this.supabase.from('asset_categories').select("*");
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
+  }
+
+  async getAssetsStatusOptions() {
+    const { data, error } = await this.supabase.from('asset_status').select("*");
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
+  }
 }

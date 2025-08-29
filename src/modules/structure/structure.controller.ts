@@ -160,4 +160,14 @@ export class StructureController {
   ) {
     return this.structureService.getMaintenaneCards(date, token);
   }
+
+  @Get('asset/category/options')
+  async getAssetsCategoryOptions() {
+    return this.structureService.getAssetsCategoryOptions()
+  }
+
+  @Get('asset/status/options')
+  async getAssetsStatusOptions() {
+    return this.structureService.getAssetsStatusOptions()
+  }
 }
