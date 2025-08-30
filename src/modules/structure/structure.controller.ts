@@ -1,8 +1,9 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { Token } from "src/decorators/token.decorator";
 import { AuthGuard } from "src/guards/auth.guard";
 import { StructureService } from "./structure.service";
-import { CreateEmployeeBody, InterventionBody, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
+import { BodyAsset, CreateEmployeeBody, InterventionBody, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
+import { FilesInterceptor } from "@nestjs/platform-express";
 
 @Controller('structure')
 export class StructureController {
@@ -170,4 +171,28 @@ export class StructureController {
   async getAssetsStatusOptions() {
     return this.structureService.getAssetsStatusOptions()
   }
+
+  @UseInterceptors(FilesInterceptor('photo'))
+  @Post('asset/:condominiumId')
+  async createAsset(
+    @Param('condominiumId') condominiumId: string,
+    @Body() body: BodyAsset,
+    @UploadedFiles() photo: any,
+  ) {
+    return this.structureService.createAsset(condominiumId, body, photo)
+  }
+
+  @Get('assets/:condominiumId')
+  async getAssets(@Param('condominiumId') condominiumId: string) {
+    return this.structureService.getAssets(condominiumId)
+  }
+
+  @Put('assets/:assetId')
+  async updateAsset(
+    @Param('assetId') assetId: string,
+    @Body() body: BodyAsset
+  ) {
+    return this.structureService.updateAsset(assetId, body)
+  }
+
 }

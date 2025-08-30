@@ -9,8 +9,10 @@ import { id, ptBR } from 'date-fns/locale';
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { flattenObject } from "src/utils/flatten-object";
 import { FinanceService } from "../finance/finance.service";
-import { CreateEmployeeBody, EventSpace, InterventionBody, InterventionPayment, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
+import { BodyAsset, CreateEmployeeBody, EventSpace, InterventionBody, InterventionPayment, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
 import { translateComplexDurationToEnglish } from "src/utils/translation-duration-to-english";
+import { normalizeFileName } from "src/utils/normalize-file-name";
+import { v4 } from "uuid";
 
 @Injectable()
 export class StructureService {
@@ -800,5 +802,100 @@ export class StructureService {
       throw new Error(error.message);
     }
     return data;
+  }
+
+  async createAsset(condominiumId: string, data: BodyAsset, photos: any) {
+    let photoUrl: string = '';
+
+    if (photos.length > 0) {
+      const currentPhoto = photos[0];
+      const fileName = normalizeFileName(currentPhoto.originalname)
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const { data: fileData, error } = await this.supabase.storage
+        .from('condo')
+        .upload(`uploads/${uniqueFileName}`, currentPhoto.buffer);
+      if (error) {
+        throw new Error(error.message)
+      }
+      photoUrl = fileData.fullPath;
+    }
+
+    const { data: assets, error } = await this.supabase.from('assets').insert({
+      photo_url: photoUrl,
+      name: data.item,
+      code_item: data.code,
+      area_id: data.areaId,
+      category_id: data.categoryId,
+      status_id: data.statusId,
+      condominium_id: condominiumId,
+      created_at: new Date(),
+    });
+
+    if (error) {
+      throw new Error(error.message)
+    }
+    const currentAssetInserted = data?.[0];
+    return currentAssetInserted
+  }
+
+  async getAssets(condominiumId: string) {
+    const { data: assets, error } = await this.supabase
+      .from('assets')
+      .select(`*, 
+        asset_categories (*),
+        asset_status (*),
+        condominium_areas (*)
+        `)
+      .eq('condominium_id', condominiumId);
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const assetsFlatten: any = assets.map(asset => flattenObject(asset));
+
+    const assetsWithPublicUrlPhoto = await Promise.all(assetsFlatten.map(async (asset) => {
+      const path = asset.photo_url;
+      const [_, ...pathFormatted] = path.split('/')
+
+      const {
+        data
+      } = this.supabase.storage.from('condo').getPublicUrl(`${pathFormatted.join('/')}`);
+
+      const {
+        publicUrl
+      } = data;
+
+      return {
+        ...asset,
+        publicUrl,
+      }
+    }))
+
+    return camelcaseKeys(assetsWithPublicUrlPhoto)
+  }
+
+  async updateAsset(assetId: string, data: BodyAsset) {
+
+    const { data: assets, error } = await this.supabase
+      .from('assets')
+      .update({
+        name: data.item,
+        code_item: data.code,
+        area_id: data.areaId,
+        category_id: data.categoryId,
+        status_id: data.statusId,
+        updated_at: new Date(),
+      })
+      .eq('id', assetId)
+      .select('*')
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const curretAssetInserted = assets?.[0];
+
+    return curretAssetInserted;
   }
 }

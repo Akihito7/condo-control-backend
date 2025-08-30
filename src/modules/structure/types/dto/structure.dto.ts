@@ -88,3 +88,12 @@ export type InterventionPayment = {
   maintenancesPaymentCompletionDate: string | null;
 };
 
+export type BodyAsset = {
+
+  code: string
+  item: string
+  areaId: string
+  statusId: string
+  categoryId: string
+
+}
