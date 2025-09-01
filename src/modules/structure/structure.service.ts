@@ -855,8 +855,6 @@ export class StructureService {
 
     const assetsFlatten: any = assets.map(asset => flattenObject(asset));
 
-    console.log(assetsFlatten);
-
     const assetsWithPublicUrlPhoto = await Promise.all(assetsFlatten.map(async (asset) => {
       const path = asset.photo_url;
       let publicUrlAsset = ''
@@ -1057,7 +1055,7 @@ export class StructureService {
     }[],
     token: string
   ) {
-    const projectUrl = "https://vtupybmxylkunzpgxwex.supabase.co"; // teu Project URL
+    const projectUrl = "https://vtupybmxylkunzpgxwex.supabase.co";
     const bucket = "condo";
 
     const photosObject = await Promise.all(
@@ -1092,19 +1090,52 @@ export class StructureService {
     );
 
     const { userId } = await this.authService.decodeToken(token);
+    const {
+      condominiumId,
+      name
+    } = await this.authService.me(userId)
 
-    const { error } = await this.supabase.from("asset_reports").insert({
+    const { data: reports, error } = await this.supabase.from("asset_reports").insert({
       asset_id: assetId,
       description: data.description,
       reported_by: userId,
       photos: photosObject, // já contém a url_permanent
       created_at: new Date(),
-    });
+    })
+      .select('*');
+
 
     if (error) {
       console.log("erro ao inserir");
       throw new Error(error.message);
     }
+
+    const { data: users, error: usersError } = await this.supabase
+      .from("user")
+      .select(`*, user_association (*)`);
+
+
+    const usersFiltered =
+      users?.filter(user => String(user.user_association?.[0]?.condominium_id) === String(condominiumId) && user.user_association?.[0]?.role === 'admin' || user.user_association?.[0]?.role === 'employee').map(user => user.id)
+
+
+      await Promise.all((usersFiltered ?? []).map(async (toUserId) => {
+      const { error } = await this.supabase.from('notifications').insert({
+        title: 'Novo report adicionado a um patrimonio',
+        description: `Um report foi adicionado ao patrimonio pelo ${name}`,
+        created_at: new Date(),
+        created_by: userId,
+        read: false,
+        condominium_id: condominiumId,
+        to_user_id: toUserId
+      })
+
+      if (error) {
+        console.log("ERROR SENDING NOTIFICATION =>", error)
+      }
+    }))
+
+
   }
 
 
