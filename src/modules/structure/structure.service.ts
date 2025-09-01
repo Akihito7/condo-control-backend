@@ -806,7 +806,6 @@ export class StructureService {
 
   async createAsset(condominiumId: string, data: BodyAsset, photos: any) {
     let photoUrl: string = '';
-    console.log("PHOTOS", photos)
 
     if (photos.length > 0) {
       const currentPhoto = photos[0];
