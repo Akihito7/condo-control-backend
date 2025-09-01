@@ -1016,4 +1016,28 @@ export class StructureService {
     }
   }
 
+  async getNotifications(token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+
+    const { data, error } = await this.supabase
+      .from("notifications")
+      .select("*")
+      .eq("to_user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+
+    return camelcaseKeys(data)
+  }
+
+  async markNotificationAsRead(notificationId) {
+    await this.supabase.from("notifications").update({
+      read: true
+    }).eq('id', notificationId)
+  }
+
 }

@@ -215,4 +215,15 @@ export class StructureController {
   async deleteAssetImage(@Param('assetId') assetId) {
     return this.structureService.deleteAssetImage(assetId);
   }
+
+
+  @Get('notifications')
+  async getNotifications(@Token() token: string) {
+    return this.structureService.getNotifications(token)
+  }
+
+  @Patch('notifications/:notificationId')
+  async markNotificationAsRead(@Param('notificationId') notificationId) {
+    return this.structureService.markNotificationAsRead(notificationId)
+  }
 }
