@@ -226,4 +226,21 @@ export class StructureController {
   async markNotificationAsRead(@Param('notificationId') notificationId) {
     return this.structureService.markNotificationAsRead(notificationId)
   }
+
+  @Post('assets/report/:assetId')
+  @UseInterceptors(FilesInterceptor('photos'))
+  async createReportAsset(
+    @Param('assetId') assetId: string,
+    @Body() body: any,
+    @UploadedFiles() photos: any,
+    @Token() token: string,
+
+  ) {
+    return this.structureService.createReportAsset(assetId, body, photos, token)
+  }
+
+  @Get('assets/details/:assetId')
+  async getAssetWithReports(@Param('assetId') assetId: string) {
+    return this.structureService.getAssetWithReports(assetId)
+  }
 }

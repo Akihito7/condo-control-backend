@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Body, Inject, Injectable, Param, Post } from "@nestjs/common";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { AuthService } from "../auth/auth.service";
@@ -844,7 +844,8 @@ export class StructureService {
       .select(`*, 
         asset_categories (*),
         asset_status (*),
-        condominium_areas (*)
+        condominium_areas (*),
+        asset_reports (*)
         `)
       .eq('condominium_id', condominiumId);
 
@@ -853,6 +854,8 @@ export class StructureService {
     }
 
     const assetsFlatten: any = assets.map(asset => flattenObject(asset));
+
+    console.log(assetsFlatten);
 
     const assetsWithPublicUrlPhoto = await Promise.all(assetsFlatten.map(async (asset) => {
       const path = asset.photo_url;
@@ -876,6 +879,7 @@ export class StructureService {
 
       return {
         ...asset,
+        reportCount: asset.asset_reports.length,
         publicUrl: publicUrlAsset
       }
     }))
@@ -1038,6 +1042,87 @@ export class StructureService {
     await this.supabase.from("notifications").update({
       read: true
     }).eq('id', notificationId)
+  }
+
+  async createReportAsset(
+    assetId: string,
+    data: any,
+    photos: {
+      fieldname: string;
+      originalname: string;
+      encoding: string;
+      mimetype: string;
+      buffer: Buffer;
+      size: number;
+    }[],
+    token: string
+  ) {
+    const projectUrl = "https://vtupybmxylkunzpgxwex.supabase.co"; // teu Project URL
+    const bucket = "condo";
+
+    const photosObject = await Promise.all(
+      photos.map(async (photo) => {
+        const fileName = normalizeFileName(photo.originalname);
+        const uuid = v4();
+        const uniqueFileName = `${uuid}-${fileName}`;
+
+        const { data: fileData, error } = await this.supabase.storage
+          .from(bucket)
+          .upload(`uploads/${uniqueFileName}`, photo.buffer, {
+            contentType: photo.mimetype,
+            upsert: false,
+          });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        const { path, id } = fileData;
+
+        // URL permanente do arquivo
+        const publicUrl = `${projectUrl}/storage/v1/object/public/${bucket}/${path}`;
+
+        return {
+          supabaseId: id,
+          path,
+          publicUrl, // aqui já fica a URL pronta
+          localId: uuid,
+        };
+      })
+    );
+
+    const { userId } = await this.authService.decodeToken(token);
+
+    const { error } = await this.supabase.from("asset_reports").insert({
+      asset_id: assetId,
+      description: data.description,
+      reported_by: userId,
+      photos: photosObject, // já contém a url_permanent
+      created_at: new Date(),
+    });
+
+    if (error) {
+      console.log("erro ao inserir");
+      throw new Error(error.message);
+    }
+  }
+
+
+  async getAssetWithReports(assetId: string) {
+    const { data: assets, error } = await this.supabase
+      .from("assets")
+      .select(`*, asset_reports (*)`)
+      .eq('id', assetId);
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const assetsFlatten = assets.map(asset => flattenObject(asset));
+
+    const assetsFormatted = camelcaseKeys(assetsFlatten, { deep: true });
+
+    return assetsFormatted
   }
 
 }
