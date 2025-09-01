@@ -806,6 +806,7 @@ export class StructureService {
 
   async createAsset(condominiumId: string, data: BodyAsset, photos: any) {
     let photoUrl: string = '';
+    console.log("PHOTOS", photos)
 
     if (photos.length > 0) {
       const currentPhoto = photos[0];
@@ -856,19 +857,27 @@ export class StructureService {
 
     const assetsWithPublicUrlPhoto = await Promise.all(assetsFlatten.map(async (asset) => {
       const path = asset.photo_url;
-      const [_, ...pathFormatted] = path.split('/')
+      let publicUrlAsset = ''
 
-      const {
-        data
-      } = this.supabase.storage.from('condo').getPublicUrl(`${pathFormatted.join('/')}`);
+      if (path) {
+        const [_, ...pathFormatted] = path?.split('/');
+        const {
+          data
+        } = this.supabase.storage
+          .from('condo')
+          .getPublicUrl(`${pathFormatted.join('/')}`);
 
-      const {
-        publicUrl
-      } = data;
+        const {
+          publicUrl
+        } = data;
+
+        publicUrlAsset = publicUrl;
+
+      }
 
       return {
         ...asset,
-        publicUrl,
+        publicUrl: publicUrlAsset
       }
     }))
 
@@ -898,4 +907,114 @@ export class StructureService {
 
     return curretAssetInserted;
   }
+
+  async deleteAsset(assetId: string) {
+    const { data: assets, error: assetsError } = await this.supabase
+      .from('assets')
+      .select('*')
+      .eq('id', assetId);
+
+    if (assetsError) {
+      throw new Error(assetsError?.message)
+    }
+
+    const currentAsset = assets?.[0];
+
+    if (currentAsset.photo_url) {
+      const [_, ...path] = currentAsset.photo_url.split('/');
+      const pathFormatted = path.join('/');
+      const { error: errorDeleteImage } = await this.supabase.storage
+        .from('condo')
+        .remove([pathFormatted]);
+      if (errorDeleteImage) {
+        throw new Error(errorDeleteImage.message)
+      }
+    }
+
+    const { error } = await this.supabase
+      .from('assets')
+      .delete()
+      .eq('id', assetId);
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
+  async updateAssetImage(assetId, photo) {
+    let photoUrl = '';
+
+    const { data: assets, error } = await this.supabase
+      .from('assets')
+      .select("*")
+      .eq('id', assetId);
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const currentAsset = assets?.[0];
+
+    if (currentAsset.photo_url) {
+      const [_, ...path] = currentAsset.photo_url.split('/');
+      const pathFormatted = path.join('/');
+      const { error: errorDeleteImage } = await this.supabase.storage
+        .from('condo')
+        .remove([pathFormatted]);
+      if (errorDeleteImage) {
+        throw new Error(errorDeleteImage.message)
+      }
+    }
+
+    const currentPhoto = photo[0];
+
+    const fileName = normalizeFileName(currentPhoto.originalname);
+
+    const uniqueFileName = `${v4()}-${fileName}`;
+
+    const { data: fileData, error: errorInsertNewPhoto } = await this.supabase.storage
+      .from('condo')
+      .upload(`uploads/${uniqueFileName}`, currentPhoto.buffer);
+
+    if (errorInsertNewPhoto) {
+      throw new Error(errorInsertNewPhoto.message)
+    }
+    photoUrl = fileData.fullPath;
+
+
+    const { error: errorUpdateAsset } = await this.supabase
+      .from('assets')
+      .update({
+        photo_url: photoUrl,
+        updated_at: new Date()
+      })
+      .eq('id', assetId);
+
+    if (errorUpdateAsset) {
+      throw new Error(errorUpdateAsset.message)
+    }
+  }
+
+  async deleteAssetImage(assetId: string) {
+    const { data, error } = await this.supabase.from("assets").select('*').eq('id', assetId);
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const currentAsset = data?.[0];
+
+    if (currentAsset.photo_url) {
+      const [_, ...path] = currentAsset.photo_url.split('/');
+      const pathFormatted = path.join('/');
+      const { error: errorDeleteImage } = await this.supabase.storage
+        .from('condo')
+        .remove([pathFormatted]);
+      if (errorDeleteImage) {
+        throw new Error(errorDeleteImage.message)
+      }
+
+      await this.supabase.from('assets').update({ photo_url: null }).eq('id', assetId)
+    }
+  }
+
 }

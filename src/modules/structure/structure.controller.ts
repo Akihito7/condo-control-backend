@@ -4,6 +4,7 @@ import { AuthGuard } from "src/guards/auth.guard";
 import { StructureService } from "./structure.service";
 import { BodyAsset, CreateEmployeeBody, InterventionBody, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
 import { FilesInterceptor } from "@nestjs/platform-express";
+import { throws } from "assert";
 
 @Controller('structure')
 export class StructureController {
@@ -195,4 +196,23 @@ export class StructureController {
     return this.structureService.updateAsset(assetId, body)
   }
 
+
+  @Delete('assets/:assetId')
+  async deleteAsset(@Param('assetId') assetId: string) {
+    return this.structureService.deleteAsset(assetId);
+  }
+
+  @Patch('assets/image/:assetId')
+  @UseInterceptors(FilesInterceptor('photo'))
+  async updateAssetImage(
+    @Param('assetId') assetId,
+    @UploadedFiles() photo: any,
+  ) {
+    return this.structureService.updateAssetImage(assetId, photo)
+  }
+
+  @Patch('assets/image/delete/:assetId')
+  async deleteAssetImage(@Param('assetId') assetId) {
+    return this.structureService.deleteAssetImage(assetId);
+  }
 }
