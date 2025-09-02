@@ -68,6 +68,7 @@ export class IndicatorsService {
         categories (*)
         `)
       .eq('condominium_id', condominiumId)
+      .eq('is_deleted', false)
       .gte('due_date', startDate)
       .lte('due_date', endDate);
 
