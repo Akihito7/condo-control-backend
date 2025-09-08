@@ -3,6 +3,7 @@ import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, Get
 import { FinanceService } from "./finance.service";
 import { Roles, RolesGuard } from "src/decorators/roles.decorator";
 import { AuthGuard } from "src/guards/auth.guard";
+import { Token } from "src/decorators/token.decorator";
 
 @Controller('finance')
 @UseGuards(AuthGuard, RolesGuard)
@@ -164,5 +165,39 @@ export class FinanceController {
   @Delete('delinquency/:delinquencyId')
   async deleteDelinquency(@Param('delinquencyId') delinquencyId: string) {
     return this.financeService.deleteDelinquency(delinquencyId)
+  }
+
+  @Get('delinquency/resume/:startDate/:endDate')
+  async getDelinquencyResume(
+    @Param() params: {
+      startDate: string,
+      endDate: string;
+    },
+    @Token() token: string) {
+    const { startDate, endDate } = params;
+    return this.financeService.getDelinquencyResume({
+      startDate,
+      endDate,
+      token
+    })
+  }
+
+  @Get('delinquency/chart/distribution-by-type/:startDate/:endDate')
+  async getChartDistribuitionByType(
+    @Param() params: {
+      startDate: string,
+      endDate: string;
+    },
+    @Token() token: string
+  ) {
+    const {
+      startDate,
+      endDate
+    } = params;
+    return this.financeService.getChartDistruibitionByType({
+      startDate,
+      endDate,
+      token
+    })
   }
 }

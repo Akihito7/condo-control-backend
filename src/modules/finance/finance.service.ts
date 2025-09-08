@@ -3,14 +3,20 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { SupabaseClient } from "@supabase/supabase-js";
 import camelcaseKeys from "camelcase-keys";
 import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody } from "./types/dto/finance.dto";
-import { startOfMonth, subMonths, format, differenceInMonths, isThisISOWeek, differenceInDays, addMonths } from "date-fns"
+import { startOfMonth, subMonths, format, differenceInMonths, isThisISOWeek, differenceInDays, addMonths, parseISO } from "date-fns"
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { FinanceResponseData } from "./types/response/finance.response";
+import { AuthService } from "../auth/auth.service";
+import { flattenObject } from "src/utils/flatten-object";
+
 
 
 @Injectable()
 export class FinanceService {
-  constructor(@Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient) { }
+  constructor(
+    @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
+    private readonly authService: AuthService
+  ) { }
 
   async getFinanaceInfoByCondominium(
     { condominiumId, startDate, endDate }: FinanceInfoByCondominium): Promise<FinanceResponseData> {
@@ -779,5 +785,123 @@ export class FinanceService {
     })
       .eq("id", delinquencyId)
 
+  }
+
+  async getDelinquencyResume({
+    startDate,
+    endDate,
+    token
+  }: {
+    startDate: string,
+    endDate: string,
+    token: string
+  }) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data: delinquencyRecords, error } = await this.supabase
+      .from('delinquency_records')
+      .select("*")
+      .eq('condominium_id', condominiumId)
+      .gte('due_date', startDate)
+      .lte('due_date', endDate)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const records = camelcaseKeys(delinquencyRecords);
+
+    const summary = {
+      uniqueApartmentIds: new Set<number>(),
+      totalInstallments: 0,
+      unpaidCount: 0,
+      averageDaysOverdue: 0,
+      totalAmountToReceive: 0,
+      totalDaysOverdue: 0,
+      uniqueApartamentsLength: 0,
+    };
+
+    records.forEach((record) => {
+      const { paymentDate, dueDate, apartamentId, amount } = record;
+
+      const isPaid = Boolean(paymentDate);
+
+      const due = parseISO(dueDate);
+      const end = isPaid ? parseISO(paymentDate!) : new Date();
+      const daysOverdue = differenceInDays(end, due);
+
+
+      summary.totalDaysOverdue += daysOverdue;
+      summary.totalInstallments += 1;
+
+      if (!isPaid) {
+        summary.unpaidCount += 1;
+        summary.totalAmountToReceive += amount;
+      }
+      summary.uniqueApartmentIds.add(apartamentId);
+    });
+    summary.averageDaysOverdue = summary.totalDaysOverdue > 0 && summary.totalInstallments > 0 ?
+      Math.floor(summary.totalDaysOverdue / summary.totalInstallments) : 0
+
+    summary.uniqueApartamentsLength = summary.uniqueApartmentIds.size;
+
+    return summary;
+  }
+
+  async getChartDistruibitionByType({
+    startDate,
+    endDate,
+    token
+  }: {
+    startDate: string,
+    endDate: string,
+    token: string
+  }) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data: delinquencyRecords, error } = await this.supabase
+      .from('delinquency_records')
+      .select(`*, categories (*)`)
+      .eq('condominium_id', condominiumId)
+      .gte('due_date', startDate)
+      .lte('due_date', endDate)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const records = camelcaseKeys(delinquencyRecords.map(delinquency => flattenObject(delinquency)));
+
+    const result: {
+      categoryId: number;
+      categoryName: string;
+      categoryCount: number;
+      categoryPercentage: number;
+    }[] = [];
+
+    const totalRecords = records.length;
+
+    records.forEach((record: any) => {
+      const indexCategoryInResult = result.findIndex(item => item.categoryId === record.categoriesId);
+      if (indexCategoryInResult === -1) {
+        return result.push({
+          categoryId: record.categoriesId,
+          categoryName: record.categoriesName,
+          categoryPercentage: (1 / totalRecords) * 100,
+          categoryCount: 1
+        })
+
+
+      }
+      const currentItem = result[indexCategoryInResult];
+      currentItem.categoryCount += 1;
+      currentItem.categoryPercentage = (currentItem.categoryCount / totalRecords) * 100;
+
+    })
+
+    console.log(result);
+    return result;
   }
 }

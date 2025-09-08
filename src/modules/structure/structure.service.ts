@@ -1099,7 +1099,7 @@ export class StructureService {
       asset_id: assetId,
       description: data.description,
       reported_by: userId,
-      photos: photosObject, // já contém a url_permanent
+      photos: photosObject, 
       created_at: new Date(),
     })
       .select('*');
