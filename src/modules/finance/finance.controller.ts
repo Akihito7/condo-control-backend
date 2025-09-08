@@ -23,6 +23,13 @@ export class FinanceController {
       .getFinancialRecordsByCondominiumId(filters);
   }
 
+  @Get('delinquency/monthly-evolution/:date')
+  async getDelinquencyRecords(
+    @Token() token: string, @Param() params: any) {
+    const { date } = params;
+    return this.financeService.getDelinquencyRecords(token, date)
+  }
+
   @Get('/delinquency/:condominiumId/:date')
   async getDelinquencyRegister(@Param() param: GetDelinquencyParamsDTO) {
     return this.financeService.getDelinquencyRegister(param)
@@ -200,4 +207,7 @@ export class FinanceController {
       token
     })
   }
+
+
+
 }

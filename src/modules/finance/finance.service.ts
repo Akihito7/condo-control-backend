@@ -796,6 +796,7 @@ export class FinanceService {
     endDate: string,
     token: string
   }) {
+    console.log(startDate, endDate)
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
@@ -806,9 +807,17 @@ export class FinanceService {
       .gte('due_date', startDate)
       .lte('due_date', endDate)
 
+    const { data: apartaments, error: apartamentsError } = await this.supabase
+      .from('apartment')
+      .select('id')
+      .eq('condominium_id', condominiumId);
+
+
     if (error) {
       throw new Error(error.message)
     }
+
+    const apartamentsTotal = apartaments?.length ?? 0;
 
     const records = camelcaseKeys(delinquencyRecords);
 
@@ -820,6 +829,7 @@ export class FinanceService {
       totalAmountToReceive: 0,
       totalDaysOverdue: 0,
       uniqueApartamentsLength: 0,
+      delinquencyPercentage: ''
     };
 
     records.forEach((record) => {
@@ -845,6 +855,7 @@ export class FinanceService {
       Math.floor(summary.totalDaysOverdue / summary.totalInstallments) : 0
 
     summary.uniqueApartamentsLength = summary.uniqueApartmentIds.size;
+    summary.delinquencyPercentage = ((summary.uniqueApartamentsLength / apartamentsTotal) * 100).toFixed(2);
 
     return summary;
   }
@@ -903,5 +914,25 @@ export class FinanceService {
 
     console.log(result);
     return result;
+  }
+
+  async getDelinquencyRecords(token: string, date: string) {
+
+    const yearFormatted = format(date, 'yyyy')
+
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data, error } = await this.supabase
+      .rpc('get_monthly_delinquency', { condo_id: condominiumId, year_input: yearFormatted });
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    console.log(data)
+
+    return camelcaseKeys(data);
+
   }
 }
