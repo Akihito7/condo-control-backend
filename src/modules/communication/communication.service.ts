@@ -14,6 +14,7 @@ import { id, ptBR } from "date-fns/locale";
 import { MailerService } from "@nestjs-modules/mailer";
 import { min } from "class-validator";
 import { generateCode } from "src/utils/generate-code";
+import { reduce } from "rxjs";
 
 @Injectable()
 export class CommunicationService {
@@ -718,8 +719,17 @@ export class CommunicationService {
         percentageParticipation,
       }
     }));
+    const reducePercetageParticipation = pollsWithVote.reduce((acc, vote: any) => {
+      return acc += Number(vote.percentageParticipation)
+    }, 0)
 
-    return camelcaseKeys(pollsWithVote)
+
+    const accuracyPercentageParticipation = (reducePercetageParticipation / polls.length);
+
+    return camelcaseKeys({
+      accuracyPercentageParticipation,
+      data: pollsWithVote
+    }, { deep: true })
   }
 
 
@@ -1071,5 +1081,28 @@ export class CommunicationService {
       .eq('id', currentCode.id);
   }
 
+  /*   async getCardsVirtualAssemblyPolls(filters: {
+      date: string,
+      condominiumId: string
+    }, token: string
+    ) {
+      const { userId } = await this.authService.decodeToken(token);
+  
+      const {
+        startDate,
+        endDate
+      } = getFullMonthInterval(filters.date);
+  
+      const { data: polls, error: pollsError } = await this.supabase
+        .from('polls')
+        .select(`*,
+          polls_options (*)
+          `)
+        .eq('condominium_id', filters.condominiumId)
+        .gte('start_date', `${startDate}T00:00:00.000Z`)
+        .lt('start_date', `${endDate}T23:59:59.999Z`);
+  
+    }
+   */
 
 }
