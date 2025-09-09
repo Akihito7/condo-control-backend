@@ -11,6 +11,7 @@ import { SecurityModule } from './modules/security/security.module';
 import { StructureModule } from './modules/structure/structure.module';
 import { BackofficeModule } from './modules/backoffice/backoffice.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 @Module({
   imports: [
@@ -23,7 +24,22 @@ import { ScheduleModule } from '@nestjs/schedule';
     SecurityModule,
     StructureModule,
     BackofficeModule,
-    ScheduleModule.forRoot()
+    ScheduleModule.forRoot(),
+    MailerModule.forRoot({
+      transport: {
+        host: 'smtp.gmail.com',  
+        port: 587,              
+        secure: false,           
+        auth: {
+          user: 'akihitodevelopment@gmail.com',
+          pass: 'yeji raqc bkzb jhju'
+        },
+      },
+      defaults: {
+        from: '"No Reply" <akihitodevelopment@gmail.com>',
+      },
+    }),
+
   ],
   controllers: [AppController],
   providers: [AppService],

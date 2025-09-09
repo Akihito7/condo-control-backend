@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, VersioningType } from "@nestjs
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { BodyCreateEvent, BodyOpeningCalls, ParamOpeningCalls } from "./types/dto/communication.dto";
-import { differenceInMinutes, format, isBefore } from 'date-fns';
+import { differenceInMinutes, format, isBefore, isThisISOWeek } from 'date-fns';
 import camelcaseKeys from "camelcase-keys";
 import { flattenObject } from "../../utils/flatten-object"
 import { v4 } from "uuid";
@@ -10,13 +10,17 @@ import { normalizeFileName } from "src/utils/normalize-file-name";
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { AuthService } from "../auth/auth.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { ptBR } from "date-fns/locale";
+import { id, ptBR } from "date-fns/locale";
+import { MailerService } from "@nestjs-modules/mailer";
+import { min } from "class-validator";
+import { generateCode } from "src/utils/generate-code";
 
 @Injectable()
 export class CommunicationService {
   constructor(
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly mailerService: MailerService
   ) { }
 
   async getOptionsStatusOpeningCalls() {
@@ -930,5 +934,124 @@ export class CommunicationService {
       if (updateError) throw new Error(updateError.message);
     }));
   }
+
+  async sendCodeToMarkAsDelivery(deliveryId: string) {
+
+    // Busca a entrega
+    const { data, error } = await this.supabase.from('delivery')
+      .select('*')
+      .eq('id', deliveryId);
+
+    if (error) throw new Error(error.message);
+
+    const currentDelivery = camelcaseKeys(data?.[0]);
+
+    // Busca o apartamento
+    const { data: apartments, error: apartmentsError } = await this.supabase.from('apartment')
+      .select("*")
+      .eq('id', currentDelivery.apartmentId);
+
+    if (apartmentsError) throw new Error(apartmentsError.message);
+
+    const mainEmail = apartments?.[0]?.email;
+
+    if (!mainEmail) {
+      throw new Error('Não há e-mail vinculado a este apartamento. Por favor, entre em contato com o síndico.');
+    }
+
+    // Insere o código de confirmação
+    const { data: codeInserteds, error: insertCodeError } = await this.supabase.from('confirmation_codes').insert({
+      code: generateCode(),
+      register_id: deliveryId,
+      table_reference: 'delivery',
+      created_at: new Date(),
+      expires_at: new Date(Date.now() + 15 * 60 * 1000),
+      used: false
+    }).select('*');
+
+    if (insertCodeError) throw new Error(insertCodeError.message);
+
+    const code = codeInserteds?.[0]?.code;
+    console.log("Código gerado:", code);
+
+    // Envia e-mail com HTML
+    await this.mailerService.sendMail({
+      to: mainEmail,
+      subject: 'Confirmação de Entrega - CondoControl',
+      html: `
+      <div style="font-family: Arial, sans-serif; line-height:1.5; color:#333;">
+        <h2 style="color:#4CAF50;">Confirmação de Entrega</h2>
+        <p>Olá,</p>
+        <p>Você recebeu um novo código para marcar a entrega do seu pedido:</p>
+        <div style="margin: 20px 0; padding: 15px; background-color:#f4f4f4; border-radius:8px; text-align:center; font-size:24px; font-weight:bold; letter-spacing:2px;">
+          ${code}
+        </div>
+        <p>Este código é válido por <strong>15 minutos</strong>.</p>
+        <p>Por favor, use este código para confirmar a entrega.</p>
+        <p>Obrigado,<br/><strong>CondoControl</strong></p>
+      </div>
+    `,
+    });
+
+    console.log(`Código enviado para ${mainEmail}`);
+  }
+
+  async confirmationDelivery(code: string) {
+    const { data: codes, error: codesError } = await this.supabase
+      .from('confirmation_codes')
+      .select('*')
+      .eq('code', code);
+
+    if (codesError) throw new Error(codesError.message);
+
+    const currentCode = codes?.[0];
+
+    if (!currentCode) {
+      throw new Error('Código não encontrado.');
+    }
+
+    console.log(currentCode);
+
+
+    if (new Date(currentCode.expires_at) < new Date()) {
+      throw new Error('O código expirou. Por favor, solicite um novo código.');
+    }
+
+    const { data, error } = await this.supabase
+      .from('confirmation_codes')
+      .select('*')
+      .eq('register_id', currentCode.register_id)
+      .eq('table_reference', currentCode.table_reference)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    const latestCode = data?.[0];
+
+  
+    const isSameCode = latestCode.code === currentCode.code;
+
+    if (!isSameCode) {
+      throw new Error('O código é inválido, utilize o código mais recente.');
+    }
+
+
+    const { error: updateDeliveryError } = await this.supabase
+      .from('delivery')
+      .update({
+        picked_up_at: new Date(),
+        status: 2,
+      })
+      .eq('id', currentCode.register_id);
+
+    if (updateDeliveryError) throw new Error('Erro ao atualizar o delivery.');
+
+ 
+    await this.supabase
+      .from('confirmation_codes')
+      .update({ used: true })
+      .eq('id', currentCode.id);
+  }
+
 
 }

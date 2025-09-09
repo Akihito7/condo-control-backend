@@ -200,4 +200,14 @@ export class CommunicationController {
   async deleteEventCondominium(@Param('id') eventId: string) {
     return this.communicationSerivce.deleteEventCondominium(eventId)
   }
+
+  @Post('delivery/mark-as-delivery/send-code/:deliveryId')
+  async sendCodeToMarkAsDelivery(@Param('deliveryId') deliveryId: string) {
+    return this.communicationSerivce.sendCodeToMarkAsDelivery(deliveryId);
+  }
+
+  @Put('delivery/mark-as-delivered/confirmation-code/:code')
+  async confirmationDelivery(@Param('code') code: string) {
+    return this.communicationSerivce.confirmationDelivery(code)
+  }
 }
