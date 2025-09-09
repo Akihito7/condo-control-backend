@@ -640,6 +640,7 @@ export class CommunicationService {
       startDate,
       endDate
     } = getFullMonthInterval(filters.date);
+
     const { data: polls, error: pollsError } = await this.supabase
       .from('polls')
       .select(`*,
@@ -649,6 +650,14 @@ export class CommunicationService {
       .gte('start_date', `${startDate}T00:00:00.000Z`)
       .lt('start_date', `${endDate}T23:59:59.999Z`);
 
+    const { data: apartaments, error: errorApartaments } = await this.supabase
+      .from('apartment')
+      .select('id')
+      .eq('condominium_id', filters.condominiumId);
+
+    if (errorApartaments) {
+      throw new Error(errorApartaments.message)
+    }
 
     if (pollsError) {
       throw new Error(pollsError.message)
@@ -656,14 +665,22 @@ export class CommunicationService {
 
     const pollsWithVote = await Promise.all(polls?.map(async poll => {
       const { data: votes, error: votesError } = await this.supabase
-        .from("polls_user_relation")
-        .select(`*, polls_options (*)`)
-        .eq('poll_id', poll.id);
+        .rpc("get_poll_votes", { p_poll_id: poll.id });
+
       if (votesError) {
+        console.log(votesError.message)
         return null
       }
 
       const votesFormatted = camelcaseKeys(votes.map(vote => flattenObject(vote))) as any
+
+
+      const apartamentsIds = votesFormatted
+        .filter(vote => vote?.userAssociationApartmentId)
+        .map(vote => vote.userAssociationApartmentId)
+
+
+      const uniquesApartamentsIds = new Set(apartamentsIds);
 
       let votesInfo: any = [];
       votesFormatted.forEach((vote: any) => {
@@ -691,13 +708,14 @@ export class CommunicationService {
       const totalVotes = votes.length;
       const currentUserAlreadyVoted = votes.some(vote => vote.user_id === userId);
       const currentVoteUser = votesFormatted.find(vote => vote.userId === userId) ? votesFormatted.find(vote => vote.userId === userId).optionId : null;
-
+      const percentageParticipation = ((uniquesApartamentsIds.size / apartaments.length) * 100).toFixed(2)
       return {
         ...poll,
         totalVotes,
         currentUserAlreadyVoted,
         currentVoteUser,
         votesInfo,
+        percentageParticipation,
       }
     }));
 
@@ -1028,7 +1046,7 @@ export class CommunicationService {
 
     const latestCode = data?.[0];
 
-  
+
     const isSameCode = latestCode.code === currentCode.code;
 
     if (!isSameCode) {
@@ -1046,7 +1064,7 @@ export class CommunicationService {
 
     if (updateDeliveryError) throw new Error('Erro ao atualizar o delivery.');
 
- 
+
     await this.supabase
       .from('confirmation_codes')
       .update({ used: true })
