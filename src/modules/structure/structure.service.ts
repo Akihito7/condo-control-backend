@@ -545,10 +545,11 @@ export class StructureService {
     const { userId } = await this.authService.decodeToken(token);
     const userInfo = await this.authService.me(userId);
 
+    const year = new Date(date).getFullYear();
+    const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd')
+    const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd')
 
     const condominiumId = userInfo.condominiumId;
-    const { startDate, endDate } = getFullMonthInterval(date);
-
 
     // Buscar todas as manutenções com seus payments sem filtro no supabase
     const { data: maintenances, error: maintenancesError } = await this.supabase
@@ -573,7 +574,7 @@ export class StructureService {
     const filteredMaintenances = maintenances.filter(maintenance =>
       maintenance.maintenance_payments.some(payment => {
         const paymentDate = new Date(payment.payment_date);
-        return paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate);
+        return paymentDate >= new Date(startOfYear) && paymentDate <= new Date(endOfYear);
       })
     );
 
@@ -738,11 +739,15 @@ export class StructureService {
   }
 
   async getMaintenaneCards(date: string, token: string) {
-
+    const currentDate = format(new Date(), 'yyyy-MM-dd')
     const {
       startDate,
       endDate
-    } = getFullMonthInterval(date)
+    } = getFullMonthInterval(currentDate);
+
+    const year = new Date(date).getFullYear();
+    const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd')
+    const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd')
 
     const { userId } = await this.authService.decodeToken(token);
     const userInfo = await this.authService.me(userId);
@@ -751,8 +756,8 @@ export class StructureService {
       .from('maintenance_payments')
       .select(`*, maintenances (*)`)
 
-      .gte('payment_date', startDate)
-      .lte('payment_date', endDate)
+      .gte('payment_date', startOfYear)
+      .lte('payment_date', endOfYear)
 
     if (error) {
       throw new Error(error.message);
@@ -766,15 +771,26 @@ export class StructureService {
       startDate,
       endDate,
     });
+
     const maintenancePaymentsFormatted =
       camelcaseKeys(maintenancesPaymentsFilteredByCondominium.map(maintenance => flattenObject(maintenance))) as InterventionPayment[]
 
-    const newMonthlyFixedCosts = maintenancePaymentsFormatted.reduce((value, intervention) => {
-      if (intervention.isInstallment && intervention.maintenancesStatusId === 1 || intervention.maintenanceId === 2) {
-        return value += intervention.amount;
-      }
-      return value;
-    }, 0);
+    const monthCurrentDate = startDate.slice(0, 7)
+
+    const newMonthlyFixedCosts = maintenancePaymentsFormatted.reduce((total, intervention) => {
+      const paymentDate = intervention.paymentDate.slice(0, 7)
+
+      const monthIsMatch = paymentDate === monthCurrentDate
+      const shouldCount =
+        monthIsMatch &&
+        (
+          (intervention.isInstallment && intervention.maintenancesStatusId === 1) ||
+          intervention.maintenanceId === 2
+        )
+
+      return total + (shouldCount ? intervention.amount : 0)
+    }, 0)
+
 
     const approvedImprovementsCost = maintenancePaymentsFormatted.reduce((value, intervention) => {
       return value += intervention.maintenancesAmount;
@@ -783,7 +799,7 @@ export class StructureService {
     const result = {
       newMonthlyFixedCosts,
       approvedImprovementsCost,
-      balance: cardsFinance.balance,
+      balance: cardsFinance.accumulatedBalance,
     }
     return result
   }
@@ -1099,7 +1115,7 @@ export class StructureService {
       asset_id: assetId,
       description: data.description,
       reported_by: userId,
-      photos: photosObject, 
+      photos: photosObject,
       created_at: new Date(),
     })
       .select('*');
@@ -1119,7 +1135,7 @@ export class StructureService {
       users?.filter(user => String(user.user_association?.[0]?.condominium_id) === String(condominiumId) && user.user_association?.[0]?.role === 'admin' || user.user_association?.[0]?.role === 'employee').map(user => user.id)
 
 
-      await Promise.all((usersFiltered ?? []).map(async (toUserId) => {
+    await Promise.all((usersFiltered ?? []).map(async (toUserId) => {
       const { error } = await this.supabase.from('notifications').insert({
         title: 'Novo report adicionado a um patrimonio',
         description: `Um report foi adicionado ao patrimonio pelo ${name}`,

@@ -796,7 +796,6 @@ export class FinanceService {
     endDate: string,
     token: string
   }) {
-    console.log(startDate, endDate)
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
