@@ -163,6 +163,15 @@ export class StructureController {
     return this.structureService.getMaintenaneCards(date, token);
   }
 
+  @Get('maintenance-backlog/indicators/resume/:date')
+  async getIndicatorsResume(
+    @Param() params: { date: string },
+    @Token() token: string
+  ) {
+    const { date } = params;
+    return this.structureService.getIndicatorsResume(date, token);
+  }
+
   @Get('asset/category/options')
   async getAssetsCategoryOptions() {
     return this.structureService.getAssetsCategoryOptions()

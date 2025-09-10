@@ -4,7 +4,7 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { AuthService } from "../auth/auth.service";
 import * as bcrypt from "bcrypt"
 import camelcaseKeys from "camelcase-keys";
-import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc } from 'date-fns';
+import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes } from 'date-fns';
 import { id, ptBR } from 'date-fns/locale';
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { flattenObject } from "src/utils/flatten-object";
@@ -1170,6 +1170,72 @@ export class StructureService {
     const assetsFormatted = camelcaseKeys(assetsFlatten, { deep: true });
 
     return assetsFormatted
+  }
+
+  async getIndicatorsResume(date: string, token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const year = new Date(date).getFullYear();
+    const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd');
+    const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd');
+
+    const { data: maintenances, error: maintenancesError } = await this.supabase
+      .from('maintenances')
+      .select('*')
+      .eq('condominium_id', condominiumId)
+      .gte('planned_start', startOfYear)
+      .lte('planned_start', endOfYear);
+
+    if (maintenancesError) {
+      throw new Error(maintenancesError.message)
+    }
+
+    const MAINTENANCE_TYPE_ID = 1;
+    const IMPROVEMENT_TYPE_ID = 2;
+
+    const resultSeparated: {
+      improvements: any[],
+      maintenances: any[]
+    } = {
+      improvements: [],
+      maintenances: [],
+    }
+
+    let totalTimeExecutionImprovement = 0;
+    let totalImprovementsFinished = 0;
+
+    maintenances.forEach(item => {
+      if (item.type_id === MAINTENANCE_TYPE_ID) {
+        resultSeparated.maintenances.push(item)
+      } else {
+        resultSeparated.improvements.push(item);
+        const isFinished = !!item.actual_start && !!item.actual_end;
+        if (isFinished) {
+          const timePast = differenceInMinutes(item.actual_end, item.actual_start);
+          totalTimeExecutionImprovement += timePast;
+          totalImprovementsFinished += 1;
+        }
+      }
+    })
+
+    let accuracyExecutionDaysImprovements = (totalTimeExecutionImprovement / totalImprovementsFinished) / 1440;
+    const improvementsImplemented = resultSeparated.improvements.length;
+    const improvementsCost = resultSeparated.improvements.reduce((acc, improvement) => acc += improvement.amount, 0);
+    const accuracyImprovementCost = improvementsCost > 0 ? (improvementsCost / resultSeparated.improvements.length).toFixed(2) : 0
+    const maintenancePerfomed = resultSeparated.maintenances.length;
+    const maintenanceCost = resultSeparated.maintenances.reduce((acc, maintenance) => acc += maintenance.amount, 0);
+    const accuracyMaintenanceCost = maintenanceCost > 0 ? (maintenanceCost / resultSeparated.maintenances.length).toFixed(2) : 0
+
+    return {
+      accuracyExecutionDaysImprovements,
+      improvementsImplemented,
+      improvementsCost,
+      accuracyImprovementCost,
+      maintenancePerfomed,
+      accuracyMaintenanceCost,
+      maintenanceCost
+    }
   }
 
 }
