@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { ChartParams } from "./types/dto/indicators.dto";
+import { equal } from "assert";
 
 
 @Injectable()
@@ -117,6 +118,7 @@ export class IndicatorsService {
         categories (*)
         `)
       .eq('condominium_id', condominiumId)
+      .eq('is_deleted', false)
       .gte('due_date', startDate)
       .lte('due_date', endDate);
 
@@ -126,13 +128,17 @@ export class IndicatorsService {
 
     const financialFilteredRevenue = financialRecords.filter(financial => financial.categories.income_expense_type_id === 4);
 
-    const totalRegisters = financialFilteredRevenue.length;
-    const totalRegistersFixed = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 1);
-    const totalRegistersVariable = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 2);
+    const totalAmountRegisters = financialFilteredRevenue.reduce((acc, currentValue) => (acc += currentValue.amount), 0);
+    const totalAmountRegistersFixed = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 1)
+      .reduce((acc, currentValue) => (acc += currentValue.amount), 0)
+      ;
+    const totalAmountRegistersVariable = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 2)
+      .reduce((acc, currentValue) => (acc += currentValue.amount), 0)
+      ;
 
     const result = {
-      fixed: ((totalRegistersFixed.length / totalRegisters) * 100).toFixed(2),
-      variable: ((totalRegistersVariable.length / totalRegisters) * 100).toFixed(2)
+      fixed: ((totalAmountRegistersFixed / totalAmountRegisters) * 100).toFixed(2),
+      variable: ((totalAmountRegistersVariable / totalAmountRegisters) * 100).toFixed(2)
     }
 
     return [{
@@ -159,6 +165,7 @@ export class IndicatorsService {
         categories (*)
         `)
       .eq('condominium_id', condominiumId)
+      .eq('is_deleted', false)
       .gte('due_date', startDate)
       .lte('due_date', endDate);
 
@@ -168,13 +175,18 @@ export class IndicatorsService {
 
     const financialFilteredRevenue = financialRecords.filter(financial => financial.categories.income_expense_type_id === 6);
 
-    const totalRegisters = financialFilteredRevenue.length;
-    const totalRegistersFixed = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 1);
-    const totalRegistersVariable = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 2);
+    const totalAmountRegisters = financialFilteredRevenue.reduce((acc, currentValue) => acc += currentValue.amount, 0);
+
+    const totalAmountRegistersFixed = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 1)
+      .reduce((acc, currentValue) => acc += currentValue.amount, 0);
+    const totalAmountRegistersVariable = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 2)
+      .reduce((acc, currentValue) => acc += currentValue.amount, 0)
+
+    console.log(totalAmountRegisters)
 
     const result = {
-      fixed: ((totalRegistersFixed.length / totalRegisters) * 100).toFixed(2),
-      variable: ((totalRegistersVariable.length / totalRegisters) * 100).toFixed(2)
+      fixed: ((totalAmountRegistersFixed / totalAmountRegisters) * 100).toFixed(2),
+      variable: ((totalAmountRegistersVariable / totalAmountRegisters) * 100).toFixed(2)
     }
 
     return [{
