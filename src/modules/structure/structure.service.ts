@@ -784,8 +784,8 @@ export class StructureService {
       const shouldCount =
         monthIsMatch &&
         (
-          (intervention.isInstallment && intervention.maintenancesStatusId === 1) ||
-          intervention.maintenanceId === 2
+          (intervention.isInstallment && intervention.maintenancesStatusId !== 4) ||
+          intervention.maintenanceId !== 3
         )
 
       return total + (shouldCount ? intervention.amount : 0)
