@@ -791,9 +791,13 @@ export class StructureService {
       return total + (shouldCount ? intervention.amount : 0)
     }, 0)
 
-
-    const approvedImprovementsCost = maintenancePaymentsFormatted.reduce((value, intervention) => {
-      return value += intervention.maintenancesAmount;
+    const uniqueRegistersId = new Set(maintenancePaymentsFormatted.map(item => item.maintenanceId));
+    const approvedImprovementsCost = maintenancePaymentsFormatted.reduce((acc, intervention) => {
+      if (uniqueRegistersId.has(intervention.maintenanceId)) {
+        uniqueRegistersId.delete(intervention.maintenanceId)
+        return acc += intervention.maintenancesAmount;
+      }
+      return acc;
     }, 0);
 
     const result = {
