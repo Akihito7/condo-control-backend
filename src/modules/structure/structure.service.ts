@@ -1181,6 +1181,55 @@ export class StructureService {
     const { condominiumId } = await this.authService.me(userId);
 
     const year = new Date(date).getFullYear();
+
+
+    const { data: financialRecords, error: errorFinancialRecords } = await this.supabase
+      .from("financial_records")
+      .select(`*, categories (*)`)
+      .eq("condominium_id", condominiumId)
+      .eq('is_deleted', false)
+      .gte('due_date', `${year}-01-01`)
+      .lte('due_date', `${year}-12-01`)
+
+    const INCOME_EXPENSE_TYPE_ID = 6;
+
+    const amountByMonth = await Promise.all(Array.from({ length: 12 }).map(async (_, index) => {
+      const dateFormatted = `${year}-${String(index + 1).padStart(2, '0')}`
+
+      const { data: condominiumFinances,
+        error: condiminiumFinancesErrror } = await this.supabase
+          .from('condominium_finances')
+          .select('*')
+          .eq('condominium_id', condominiumId)
+          .eq('reference_month', `${dateFormatted}-01`);
+
+      if (condiminiumFinancesErrror) {
+        console.log('ERROR : ', condiminiumFinancesErrror.message);
+      }
+
+      const currentCondominiumFinances = condominiumFinances?.[0];
+
+      if (currentCondominiumFinances && currentCondominiumFinances.expenses) {
+        return currentCondominiumFinances.expenses
+      }
+
+      console.log(dateFormatted)
+      const financialRegisterFormattedByMonth = financialRecords?.filter(financial => {
+        const [year, month] = financial.due_date.split('-')
+        const dueDateFormattedWithoutDay = `${year}-${month}`
+
+        if (dueDateFormattedWithoutDay === dateFormatted && financial.categories.income_expense_type_id === INCOME_EXPENSE_TYPE_ID) return true
+        return false
+      })
+
+      const total = financialRegisterFormattedByMonth?.reduce((acc, currentValue) => {
+        return acc += currentValue.amount
+      }, 0);
+      return total
+
+    }))
+
+    const totalExpenses = amountByMonth.reduce((acc, value) => acc += value, 0)
     const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd');
     const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd');
 
@@ -1226,10 +1275,13 @@ export class StructureService {
     let accuracyExecutionDaysImprovements = (totalTimeExecutionImprovement / totalImprovementsFinished) / 1440;
     const improvementsImplemented = resultSeparated.improvements.length;
     const improvementsCost = resultSeparated.improvements.reduce((acc, improvement) => acc += improvement.amount, 0);
+    const percentageImpactImprovements = totalExpenses ? ((improvementsCost / totalExpenses) * 100).toFixed(2) : 0
     const accuracyImprovementCost = improvementsCost > 0 ? (improvementsCost / resultSeparated.improvements.length).toFixed(2) : 0
     const maintenancePerfomed = resultSeparated.maintenances.length;
     const maintenanceCost = resultSeparated.maintenances.reduce((acc, maintenance) => acc += maintenance.amount, 0);
+    const percentageImpactMaintenances = totalExpenses ? ((maintenanceCost / totalExpenses) * 100).toFixed(2) : 0
     const accuracyMaintenanceCost = maintenanceCost > 0 ? (maintenanceCost / resultSeparated.maintenances.length).toFixed(2) : 0
+    console.log("aaaaaaa", percentageImpactImprovements)
 
     return {
       accuracyExecutionDaysImprovements,
@@ -1238,7 +1290,9 @@ export class StructureService {
       accuracyImprovementCost,
       maintenancePerfomed,
       accuracyMaintenanceCost,
-      maintenanceCost
+      maintenanceCost,
+      percentageImpactImprovements,
+      percentageImpactMaintenances,
     }
   }
 
