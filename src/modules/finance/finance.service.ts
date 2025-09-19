@@ -49,28 +49,16 @@ export class FinanceService {
       .select('id')
       .in('income_expense_type_id', incomeExpenseOptions);
     const categoryIds = categories?.map(c => c.id) ?? [];
-    const { data, error } = await this.supabase
-      .from('financial_records')
-      .select(`
-      *, 
-      apartment (id, apartment_number),
-      payment_status (id,name),
-      payment_methods (id,name),
-      categories (
-       id,
-        name,  
-        record_type_id,
-        income_expense_type_id, 
-        income_expense_types (name)
-      )
-    `)
-      .eq('is_deleted', false)
-      .eq('condominium_id', condominiumId)
-      .gte('due_date', startDate)
-      .lte('due_date', endDate)
-      .in('category_id', categoryIds)
-      .order('due_date', { ascending: false });
 
+const { data, error } = await this.supabase.rpc('get_filtered_financial_records', {
+  p_condominium_id: condominiumId,
+  p_start_date: startDate,
+  p_end_date: endDate,
+  p_category_ids: categoryIds,
+});
+
+
+  
     if (error) {
       throw new Error(error.message)
     }
@@ -218,9 +206,9 @@ export class FinanceService {
       `)
         .eq("is_deleted", false)
         .eq("condominium_id", condominiumId)
-        .gte("due_date", format(current, "yyyy-MM-01"))
+        .gte("payment_date", format(current, "yyyy-MM-01"))
         .lte(
-          "due_date",
+          "payment_date",
           format(new Date(current.getFullYear(), current.getMonth() + 1, 0), "yyyy-MM-dd")
         );
 
@@ -280,8 +268,8 @@ export class FinanceService {
     `)
       .eq('is_deleted', false)
       .eq('condominium_id', condominiumId)
-      .gte('due_date', startDate)
-      .lte('due_date', endDate);
+      .gte('payment_date', startDate)
+      .lte('payment_date', endDate);
 
     const INCOME_TYPE_ID = 4;
 
@@ -340,8 +328,8 @@ export class FinanceService {
     `)
       .eq('is_deleted', false)
       .eq('condominium_id', condominiumId)
-      .gte('due_date', startDate)
-      .lte('due_date', endDate);
+      .gte('payment_date', startDate)
+      .lte('payment_date', endDate);
 
     const EXPENSE_TYPE_ID = 6;
 
@@ -366,6 +354,7 @@ export class FinanceService {
     const [, monthStartDate] = String(startDate).split('-');
     const [, monthEndDate] = String(endDate).split('-');
     const isSameMonth = monthStartDate === monthEndDate;
+    console.log(startDate, endDate)
     const { totalIncome, incomeTarget, accumulatedBalance } = await this.getRevenueTotal({ condominiumId, startDate, endDate });
     const { totalExpenses, expensesTarget } = await this.getExpensesTotal({ condominiumId, startDate, endDate });
     const balance = totalIncome - totalExpenses
