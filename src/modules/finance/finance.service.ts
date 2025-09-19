@@ -385,6 +385,7 @@ const { data, error } = await this.supabase.rpc('get_filtered_financial_records'
   async updateFinancialRegister(registerId: number, transaction: BodyTransaction) {
     const { error } = await this.supabase.from("financial_records").update([
       {
+        payment_date : transaction.paymentDate,
         condominium_id: transaction.condominiumId,
         category_id: transaction.categoryId,
         due_date: transaction.dueDate,
