@@ -1,4 +1,4 @@
-import { IsArray, IsBoolean, IsDate, isDate, IsDateString, isNotEmpty, IsNotEmpty, IsNumber, IsString, isString, Matches } from "class-validator";
+import { IsArray, IsBoolean, IsDate, isDate, IsDateString, isNotEmpty, IsNotEmpty, IsNumber, IsOptional, IsString, isString, Matches } from "class-validator";
 
 export class FinanceInfoByCondominium {
   @IsNotEmpty()
@@ -64,6 +64,8 @@ export class BodyTransaction {
   @IsNotEmpty()
   @IsDate()
   dueDate: Date
+
+  @IsOptional()
   @IsDate()
   paymentDate: Date
   @IsNotEmpty()
@@ -89,7 +91,7 @@ export class BodyTransaction {
   @IsNotEmpty()
   @IsNumber()
   type: number
-
+  
   @IsNotEmpty()
   @IsString()
   amount: string;
