@@ -53,7 +53,7 @@ export class IndicatorsService {
       currentCategory!.value = currentCategory?.value + finacial.amount_paid
     })
 
-    return result;
+    return result.sort((a, b) => Number(b.value) - Number(a.value))
   }
 
   async getChartExpenseByCategory(filters: ChartParams) {
@@ -101,7 +101,7 @@ export class IndicatorsService {
       currentCategory!.value = currentCategory?.value + finacial.amount_paid
     })
 
-    return result;
+    return result.sort((a, b) => Number(b.value) - Number(a.value));
   }
 
   async getChartRevenuFixedVariable(filters: ChartParams) {
@@ -229,7 +229,6 @@ export class IndicatorsService {
       })
 
       const formattedMonth = `${shortMonths[i]}/${String(year).slice(-2)}`;
-
       if (hasIndexMonth.length === 0) {
         const monthData = {
           month: formattedMonth,
