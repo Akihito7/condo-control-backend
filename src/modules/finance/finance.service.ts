@@ -50,15 +50,15 @@ export class FinanceService {
       .in('income_expense_type_id', incomeExpenseOptions);
     const categoryIds = categories?.map(c => c.id) ?? [];
 
-const { data, error } = await this.supabase.rpc('get_filtered_financial_records', {
-  p_condominium_id: condominiumId,
-  p_start_date: startDate,
-  p_end_date: endDate,
-  p_category_ids: categoryIds,
-});
+    const { data, error } = await this.supabase.rpc('get_filtered_financial_records', {
+      p_condominium_id: condominiumId,
+      p_start_date: startDate,
+      p_end_date: endDate,
+      p_category_ids: categoryIds,
+    });
 
 
-  
+
     if (error) {
       throw new Error(error.message)
     }
@@ -385,7 +385,7 @@ const { data, error } = await this.supabase.rpc('get_filtered_financial_records'
   async updateFinancialRegister(registerId: number, transaction: BodyTransaction) {
     const { error } = await this.supabase.from("financial_records").update([
       {
-        payment_date : transaction.paymentDate,
+        payment_date: transaction.paymentDate,
         condominium_id: transaction.condominiumId,
         category_id: transaction.categoryId,
         due_date: transaction.dueDate,
@@ -535,8 +535,13 @@ const { data, error } = await this.supabase.rpc('get_filtered_financial_records'
       throw new Error(error.message)
     }
 
-
+    const { accumulatedBalance } = await this.getRevenueTotal({
+      condominiumId: data.condominiumId,
+      startDate,
+      endDate
+    })
     const finalRecordFormmated: any[] = [];
+
 
     recordsFinancial.forEach(financialRecord => {
 
@@ -577,7 +582,7 @@ const { data, error } = await this.supabase.rpc('get_filtered_financial_records'
       }
     })
 
-    let balanceAccumulated = quantityOfMonths > 0 ? balance * quantityOfMonths : balance * 1;
+    let balanceAccumulated = balance + accumulatedBalance;
 
     return {
       incomesTotal,
