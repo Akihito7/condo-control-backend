@@ -889,9 +889,10 @@ export class FinanceService {
       categoryName: string;
       categoryCount: number;
       categoryPercentage: number;
+      categoryAmount: number;
     }[] = [];
 
-    const totalRecords = records.length;
+    const totalAmountRecords = records.reduce((acc, current: any) => acc += current.amount, 0);
 
     records.forEach((record: any) => {
       const indexCategoryInResult = result.findIndex(item => item.categoryId === record.categoriesId);
@@ -899,19 +900,20 @@ export class FinanceService {
         return result.push({
           categoryId: record.categoriesId,
           categoryName: record.categoriesName,
-          categoryPercentage: (1 / totalRecords) * 100,
-          categoryCount: 1
+          categoryPercentage: (record.amount / totalAmountRecords) * 100,
+          categoryCount: 1,
+          categoryAmount: record.amount
         })
 
 
       }
       const currentItem = result[indexCategoryInResult];
+      currentItem.categoryAmount += record.amount
       currentItem.categoryCount += 1;
-      currentItem.categoryPercentage = (currentItem.categoryCount / totalRecords) * 100;
+      currentItem.categoryPercentage = (currentItem.categoryAmount / totalAmountRecords) * 100;
 
     })
 
-    console.log(result);
     return result;
   }
 
