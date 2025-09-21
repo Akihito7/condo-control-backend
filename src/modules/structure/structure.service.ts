@@ -1126,7 +1126,6 @@ export class StructureService {
 
 
     if (error) {
-      console.log("erro ao inserir");
       throw new Error(error.message);
     }
 
@@ -1212,8 +1211,6 @@ export class StructureService {
       if (currentCondominiumFinances && currentCondominiumFinances.expenses) {
         return currentCondominiumFinances.expenses
       }
-
-      console.log(dateFormatted)
       const financialRegisterFormattedByMonth = financialRecords?.filter(financial => {
         const [year, month] = financial.due_date.split('-')
         const dueDateFormattedWithoutDay = `${year}-${month}`
@@ -1281,7 +1278,6 @@ export class StructureService {
     const maintenanceCost = resultSeparated.maintenances.reduce((acc, maintenance) => acc += maintenance.amount, 0);
     const percentageImpactMaintenances = totalExpenses ? ((maintenanceCost / totalExpenses) * 100).toFixed(2) : 0
     const accuracyMaintenanceCost = maintenanceCost > 0 ? (maintenanceCost / resultSeparated.maintenances.length).toFixed(2) : 0
-    console.log("aaaaaaa", percentageImpactImprovements)
 
     return {
       accuracyExecutionDaysImprovements,

@@ -354,7 +354,6 @@ export class FinanceService {
     const [, monthStartDate] = String(startDate).split('-');
     const [, monthEndDate] = String(endDate).split('-');
     const isSameMonth = monthStartDate === monthEndDate;
-    console.log(startDate, endDate)
     const { totalIncome, incomeTarget, accumulatedBalance } = await this.getRevenueTotal({ condominiumId, startDate, endDate });
     const { totalExpenses, expensesTarget } = await this.getExpensesTotal({ condominiumId, startDate, endDate });
     const balance = totalIncome - totalExpenses
@@ -925,9 +924,7 @@ export class FinanceService {
     if (error) {
       throw new Error(error.message)
     }
-
-    console.log(data)
-
+    
     return camelcaseKeys(data);
 
   }

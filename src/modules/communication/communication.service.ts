@@ -1000,9 +1000,7 @@ export class CommunicationService {
     if (insertCodeError) throw new Error(insertCodeError.message);
 
     const code = codeInserteds?.[0]?.code;
-    console.log("Código gerado:", code);
 
-    // Envia e-mail com HTML
     await this.mailerService.sendMail({
       to: mainEmail,
       subject: 'Confirmação de Entrega - CondoControl',
