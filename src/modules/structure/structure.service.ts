@@ -5,7 +5,7 @@ import { AuthService } from "../auth/auth.service";
 import * as bcrypt from "bcrypt"
 import camelcaseKeys from "camelcase-keys";
 import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes } from 'date-fns';
-import { id, ptBR } from 'date-fns/locale';
+import { bn, id, ptBR } from 'date-fns/locale';
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { flattenObject } from "src/utils/flatten-object";
 import { FinanceService } from "../finance/finance.service";
@@ -1292,4 +1292,102 @@ export class StructureService {
     }
   }
 
+
+  async getChartImprovementsByArea({ date, token }: { date: string, token: string }) {
+    const IMPROVEMENT_TYPE_ID = 2;
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const year = new Date(date).getFullYear();
+
+    const { data, error } = await this.supabase.from('maintenances')
+      .select("*, condominium_areas (*)")
+      .eq('condominium_id', condominiumId)
+      .eq('type_id', IMPROVEMENT_TYPE_ID)
+      .gte('planned_start', `${year}-01-01`)
+      .lte('planned_start', `${year}-12-01`)
+
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const result = data.reduce((result, current) => {
+      const hasAreaToCurrentImprovement = result.findIndex(item => item.areaId === current.condominium_areas.id);
+      if (hasAreaToCurrentImprovement === -1) {
+        const newObject = {
+          areaId: current.condominium_areas.id,
+          areaName: current.condominium_areas.name,
+          count: 1
+        }
+        return result = [...result, newObject]
+      }
+      const resultCurrentItem = result[hasAreaToCurrentImprovement]
+      resultCurrentItem.count += 1
+      return result;
+    }, []);
+
+    return result.sort((a, b) => b.count - a.count)
+  }
+
+  async getChartMonthlyExpensesSummary({ date, token }: { date: string, token: string }) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const year = new Date(date).getFullYear();
+
+
+    const arrayMonths = Array.from({ length: 12 });
+    const MONTHS_LABEL = [
+      `jan/${year}`,
+      `fev/${year}`,
+      `mar/${year}`,
+      `abr/${year}`,
+      `mai/${year}`,
+      `jun/${year}`,
+      `jul/${year}`,
+      `ago/${year}`,
+      `set/${year}`,
+      `out/${year}`,
+      `nov/${year}`,
+      `dez/${year}`,
+    ];
+
+    const formatterDate = (month: number) => {
+      const monthFormatted = String(month).padStart(2, '0');
+      const dateFormatted = new Date(`${year}/${monthFormatted}/01`).toISOString()
+      return dateFormatted
+    }
+    const result = await Promise.all(arrayMonths.map(async (_, index) => {
+      const dateFormatted = formatterDate(index + 1);
+      const {
+        startDate,
+        endDate
+      } = getFullMonthInterval(dateFormatted);
+
+      const { data: maintenances, error: maintenancesError } = await this.supabase
+        .from('maintenances')
+        .select('*')
+        .eq('condominium_id', condominiumId)
+        .gte('planned_start', startDate)
+        .lte('planned_start', endDate);
+
+      if (maintenancesError) {
+        console.log(maintenancesError.message);
+      }
+
+      const { accumulatedBalance } = await this.financeService.getRevenueTotal({ condominiumId, startDate, endDate });
+
+      const totalCoustMaintenances = maintenances?.reduce((acc, maintenance) => acc += maintenance.amount, 0);
+      const nameMonth = MONTHS_LABEL[index];
+
+      return {
+        id: index,
+        nameMonth,
+        totalCoustMaintenances,
+        accumulatedBalance
+      }
+    }))
+    return result;
+  }
 }

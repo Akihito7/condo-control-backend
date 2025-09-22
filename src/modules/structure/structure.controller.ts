@@ -252,4 +252,14 @@ export class StructureController {
   async getAssetWithReports(@Param('assetId') assetId: string) {
     return this.structureService.getAssetWithReports(assetId)
   }
+
+  @Get('maintenace-backlog/chart/improvements-by-area/:date')
+  async getChartImprovementsByArea(@Param('date') date: string, @Token() token: string) {
+    return this.structureService.getChartImprovementsByArea({ date, token })
+  }
+
+  @Get('maintenace-backlog/monthly-expenses/summary/:date')
+  async getChartMonthlyExpensesSummary(@Param('date') date: string, @Token() token: string) {
+    return this.structureService.getChartMonthlyExpensesSummary({ date, token })
+  }
 }
