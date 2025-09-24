@@ -254,12 +254,14 @@ export class IndicatorsService {
       resultFormmated.push(monthData)
     }
 
-    resultFormmated.forEach((item, index) => {
-      if (index > 0) {
-        const totalPrevious = resultFormmated[index - 1].total;
-        item.total = item.total + totalPrevious
-      }
-    })
+    let left = 0;
+    let right = 1;
+    while (right < resultFormmated.length) {
+      const total = resultFormmated[left].total + resultFormmated[right].total;
+      resultFormmated[right].total = total;
+      left + 1
+      right + 1
+    }
     return resultFormmated
 
   }
