@@ -707,8 +707,8 @@ export class CommunicationService {
       })
 
       const totalVotes = votes.length;
-      const currentUserAlreadyVoted = votes.some(vote => vote.user_id === userId);
-      const currentVoteUser = votesFormatted.find(vote => vote.userId === userId) ? votesFormatted.find(vote => vote.userId === userId).optionId : null;
+      const currentUserAlreadyVoted = votes.some(vote => vote.polls_user_relation.user_id === userId);
+      const currentVoteUser = votesFormatted.find(vote => vote.userId === userId) ? votesFormatted.find(vote => vote.userId === userId).pollsOptionsId : null;
       const percentageParticipation = ((uniquesApartamentsIds.size / apartaments.length) * 100).toFixed(2)
       return {
         ...poll,
