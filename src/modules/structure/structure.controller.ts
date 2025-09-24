@@ -262,4 +262,11 @@ export class StructureController {
   async getChartMonthlyExpensesSummary(@Param('date') date: string, @Token() token: string) {
     return this.structureService.getChartMonthlyExpensesSummary({ date, token })
   }
+
+  @Patch('assets/report/:reportId')
+  async updateDetailsReportAsset(
+    @Param("reportId") reportId: string,
+    @Body() body: any) {
+    return this.structureService.updateDetailsReportAsset(reportId, body)
+  }
 }

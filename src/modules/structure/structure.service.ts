@@ -1390,4 +1390,17 @@ export class StructureService {
     }))
     return result;
   }
+
+  async updateDetailsReportAsset(reportId: string, body: any) {
+    const { error } = await this.supabase
+      .from('asset_reports')
+      .update({
+        status: body.status
+      })
+      .eq('id', reportId);
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
 }
