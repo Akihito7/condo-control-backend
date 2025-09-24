@@ -253,6 +253,13 @@ export class IndicatorsService {
       }
       resultFormmated.push(monthData)
     }
+
+    resultFormmated.forEach((item, index) => {
+      if (index > 0) {
+        const totalPrevious = resultFormmated[index - 1].total;
+        item.total = item.total + totalPrevious
+      }
+    })
     return resultFormmated
 
   }
