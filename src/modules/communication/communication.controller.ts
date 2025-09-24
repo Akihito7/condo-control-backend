@@ -139,16 +139,16 @@ export class CommunicationController {
     return this.communicationSerivce.getAssemblyVirtualPolls(filters, token)
   }
 
-/*   @UseGuards(AuthGuard)
-  @Get('assembly-virtual/polls/cards/:condominiumId/:date')
-  async getCardsVirtualAssemblyPolls(@Param() filters: {
-    date: string,
-    condominiumId: string,
-  },
-    @Token() token) {
-    return this.communicationSerivce.getCardsVirtualAssemblyPolls(filters, token)
-  }
- */
+  /*   @UseGuards(AuthGuard)
+    @Get('assembly-virtual/polls/cards/:condominiumId/:date')
+    async getCardsVirtualAssemblyPolls(@Param() filters: {
+      date: string,
+      condominiumId: string,
+    },
+      @Token() token) {
+      return this.communicationSerivce.getCardsVirtualAssemblyPolls(filters, token)
+    }
+   */
   @UseGuards(AuthGuard)
   @Post('assembly-virtual/polls/vote/:pollId')
   async createVoteAssemblyVirtualPoll(
@@ -159,6 +159,17 @@ export class CommunicationController {
     @Token() token,
   ) {
     return this.communicationSerivce.createVoteAssemblyVirtualPoll(pollId, body, token)
+  }
+
+  @Patch('assembly-virtual/polls/vote/:voteId')
+  async updateVoteAssemblyVirtualPoll(
+    @Param('voteId') voteId: string,
+    @Body() body: {
+      choice: string;
+    },
+  ) {
+    const { choice } = body;
+    return this.communicationSerivce.updateVoteAssemblyVirtualPoll({ voteId, choice })
   }
 
   @Post('assembly-virtual/polls/create')

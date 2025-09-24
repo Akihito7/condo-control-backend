@@ -705,10 +705,10 @@ export class CommunicationService {
           }
         }
       })
-
       const totalVotes = votes.length;
       const currentUserAlreadyVoted = votes.some(vote => vote.polls_user_relation.user_id === userId);
       const currentVoteUser = votesFormatted.find(vote => vote.userId === userId) ? votesFormatted.find(vote => vote.userId === userId).pollsOptionsId : null;
+      const currentVoteUserId = votesFormatted.find(vote => vote.userId === userId) ? votesFormatted.find(vote => vote.userId === userId).pollsUserRelationId : null;
       const percentageParticipation = ((uniquesApartamentsIds.size / apartaments.length) * 100).toFixed(2)
       return {
         ...poll,
@@ -717,6 +717,7 @@ export class CommunicationService {
         currentVoteUser,
         votesInfo,
         percentageParticipation,
+        currentVoteUserId,
       }
     }));
     const reducePercetageParticipation = pollsWithVote.reduce((acc, vote: any) => {
@@ -1077,6 +1078,15 @@ export class CommunicationService {
       .from('confirmation_codes')
       .update({ used: true })
       .eq('id', currentCode.id);
+  }
+
+  async updateVoteAssemblyVirtualPoll({ voteId, choice }: { voteId: string, choice: string }) {
+    await this.supabase
+      .from('polls_user_relation')
+      .update({
+        option_id: choice,
+      })
+      .eq('id', voteId)
   }
 
   /*   async getCardsVirtualAssemblyPolls(filters: {
