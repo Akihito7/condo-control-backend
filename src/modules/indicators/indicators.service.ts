@@ -259,8 +259,8 @@ export class IndicatorsService {
     while (right < resultFormmated.length) {
       const total = resultFormmated[left].total + resultFormmated[right].total;
       resultFormmated[right].total = total;
-      left + 1
-      right + 1
+      left += 1
+      right += 1
     }
     return resultFormmated
 
