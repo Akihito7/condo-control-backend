@@ -7,6 +7,9 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { flattenObject } from "src/utils/flatten-object";
 import { User } from "./types/response/auth.response";
 import camelcaseKeys from "camelcase-keys";
+import { generateCode } from "src/utils/generate-code";
+import { MailerService } from "@nestjs-modules/mailer";
+import { isAfter, parseISO } from "date-fns";
 
 
 type DecodeResponse = {
@@ -20,7 +23,8 @@ type DecodeResponse = {
 export class AuthService {
   constructor(
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly mailerService: MailerService
   ) { }
 
   async createAccount(data: any) {
@@ -124,7 +128,7 @@ export class AuthService {
     const modulesWithPermissionByRoleFormatted = camelcaseKeys(modulesWithPermissionByRole?.map(module => flattenObject(module)) ?? []);
 
     const tabStructure = modulesWithPermissionByRoleFormatted
-      .filter((module : any) => !!module.read)
+      .filter((module: any) => !!module.read)
       .map((module: any) => {
         const pagesToThisModule = pagesWithPermissionByRoleFormatted.filter((page: any) => page.pageModuleId === module.moduleId && !!page.read);
         return {
@@ -163,5 +167,96 @@ export class AuthService {
 
   async verifyToken(token: string) {
     return this.jwtService.verifyAsync(token);
+  }
+
+  async forgetPassword({ email }: { email: string }) {
+
+    const { data, error } = await this.supabase
+      .from('user')
+      .select("*")
+      .eq('email', email);
+
+    if (error) throw new Error(error.message);
+
+    const currentUserInfo = data?.[0];
+
+    if (!currentUserInfo) throw new Error("Nenhum usuario encontrado com esse email");
+
+    const code = generateCode();
+
+    const { error: codeError } = await this.supabase
+      .from('confirmation_codes')
+      .insert({
+        code,
+        register_id: currentUserInfo.id,
+        table_reference: 'user',
+        created_at: new Date(),
+        expires_at: new Date(Date.now() + 15 * 60 * 1000),
+      })
+
+    if (codeError) throw new Error(codeError.message);
+
+    const html = `
+            <div style="font-family: Arial, sans-serif; line-height:1.5; color:#333;">
+              <h2 style="color:#1E40AF;">Redefinição de Senha</h2>
+              <p>Olá,</p>
+              <p>Recebemos uma solicitação para redefinir a sua senha. Use o código abaixo para continuar:</p>
+              <div style="margin: 20px 0; padding: 15px; background-color:#f4f4f4; border-radius:8px; text-align:center; font-size:24px; font-weight:bold; letter-spacing:2px;">
+                ${code}
+              </div>
+              <p>Este código é válido por <strong>15 minutos</strong>.</p>
+              <p>Se você não solicitou a redefinição, apenas ignore este email.</p>
+              <p>Obrigado,<br/><strong>CondoControl</strong></p>
+            </div>
+          `;
+
+    await this.mailerService.sendMail({
+      to: email,
+      subject: 'Redefinição de Senha - CondoControl',
+      html,
+    })
+  }
+
+  async resetPassword({ password, code }: { password: string, code: string }) {
+    const { data: codes, error } = await this.supabase
+      .from('confirmation_codes')
+      .select('*')
+      .eq('code', code);
+
+    if (error) throw new Error(error.message);
+
+    const currentCodeInformation = codes?.[0];
+
+    if (!currentCodeInformation) throw new Error('Codigo invalido');
+
+    const alreadyUsed = currentCodeInformation.used;
+
+    if (alreadyUsed) throw new Error('codigo ja usado');
+
+    const now = new Date();
+    const expiresAt = parseISO(currentCodeInformation.expires_at);
+
+    const alreadyCodeExpired = isAfter(now, expiresAt);
+
+    if (alreadyCodeExpired) throw new Error('Codigo expirado');
+
+    const userId = currentCodeInformation.register_id;
+
+    const passwordHashed = await bcrypt.hash(password, 8);
+
+    const { error: userUpdateError } = await this.supabase.from('user').update({
+      password: passwordHashed,
+      updated_at: new Date()
+    })
+      .eq('id', userId)
+
+    if (userUpdateError) throw new Error(userUpdateError.message);
+
+    const { error: updateCodeError } = await this.supabase.from('confirmation_codes').update({
+      used: true
+    })
+      .eq('id', currentCodeInformation.id);
+
+    if (updateCodeError) throw new Error(updateCodeError.message)
   }
 }

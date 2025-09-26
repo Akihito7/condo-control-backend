@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AuthGuard } from "src/guards/auth.guard";
 import { Token } from "src/decorators/token.decorator";
 import { AuthService } from "./auth.service";
@@ -23,5 +23,15 @@ export class AuthController {
   async me(@Token() token: string) {
     const { userId } = await this.authService.decodeToken(token);
     return this.authService.me(userId)
+  }
+
+  @Post('forget-password')
+  async forgetPassword(@Body() body: { email: string }) {
+    return this.authService.forgetPassword(body)
+  }
+
+  @Patch('reset-password')
+  async resetPassword(@Body() body: { password: string, code: string }) {
+    return this.authService.resetPassword(body)
   }
 } 

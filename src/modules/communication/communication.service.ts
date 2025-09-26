@@ -1020,7 +1020,6 @@ export class CommunicationService {
     `,
     });
 
-    console.log(`Código enviado para ${mainEmail}`);
   }
 
   async confirmationDelivery(code: string) {
