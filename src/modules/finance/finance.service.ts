@@ -617,8 +617,9 @@ export class FinanceService {
     const result: {
       id: number;
       name: string;
-      total: number
-      type: string
+      total: number;
+      type: string;
+      observation: string
     }[] = [];
 
     recordsFinancial.forEach((record) => {
@@ -630,7 +631,8 @@ export class FinanceService {
           id: record.categories.id,
           name: record.categories.name,
           total: record.amount,
-          type: typeIncomeExpense
+          type: typeIncomeExpense,
+          observation: record.observation,
         })
       }
 
@@ -924,7 +926,7 @@ export class FinanceService {
     if (error) {
       throw new Error(error.message)
     }
-    
+
     return camelcaseKeys(data);
 
   }
