@@ -1376,8 +1376,6 @@ export class StructureService {
         console.log(maintenancesError.message);
       }
 
-      const { accumulatedBalance } = await this.financeService.getRevenueTotal({ condominiumId, startDate, endDate });
-
       const totalCoustMaintenances = maintenances?.reduce((acc, maintenance) => acc += maintenance.amount, 0);
       const nameMonth = MONTHS_LABEL[index];
 
@@ -1385,9 +1383,20 @@ export class StructureService {
         id: index,
         nameMonth,
         totalCoustMaintenances,
-        accumulatedBalance
+        accumulatedBalance: totalCoustMaintenances
       }
     }))
+
+    let left = 0;
+    let right = 1;
+
+
+    while (right < result.length) {
+      const totalCoustAccumulated = result[left].accumulatedBalance + result[right].totalCoustMaintenances;
+      result[right].accumulatedBalance = totalCoustAccumulated
+      left += 1;
+      right += 1;
+    }
     return result;
   }
 

@@ -143,10 +143,12 @@ export class IndicatorsService {
 
     return [{
       name: 'Fixo',
-      value: parseFloat(result.fixed)
+      value: parseFloat(result.fixed),
+      totalAmount: totalAmountRegistersFixed,
     }, {
       name: 'Variavel',
-      value: parseFloat(result.variable)
+      value: parseFloat(result.variable),
+      totalAmount: totalAmountRegistersVariable
     }]
 
   }
@@ -182,8 +184,6 @@ export class IndicatorsService {
     const totalAmountRegistersVariable = financialFilteredRevenue.filter(financial => financial.categories.record_type_id === 2)
       .reduce((acc, currentValue) => acc += currentValue.amount, 0)
 
-    console.log(totalAmountRegisters)
-
     const result = {
       fixed: ((totalAmountRegistersFixed / totalAmountRegisters) * 100).toFixed(2),
       variable: ((totalAmountRegistersVariable / totalAmountRegisters) * 100).toFixed(2)
@@ -191,10 +191,12 @@ export class IndicatorsService {
 
     return [{
       name: 'Fixo',
-      value: parseFloat(result.fixed)
+      value: parseFloat(result.fixed),
+      totalAmount: totalAmountRegistersFixed
     }, {
       name: 'Variavel',
-      value: parseFloat(result.variable)
+      value: parseFloat(result.variable),
+      totalAmount: totalAmountRegistersVariable
     }]
   }
 
