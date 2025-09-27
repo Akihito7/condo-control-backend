@@ -608,7 +608,6 @@ export class StructureService {
         condominium_id: condominiumId,
         planned_start: data.plannedStart,
         planned_end: data.plannedEnd,
-        execution_time: durationTranslateToEnglish,
         actual_start: data.actualStart,
         actual_end: data.actualEnd,
         number_of_installments: data.numberOfInstallments,
@@ -650,8 +649,7 @@ export class StructureService {
 
       if (paymentsError) throw new Error(paymentsError.message);
     }
-
-    return { maintenanceId }; // ou retornar outra coisa que precisar
+    return { maintenanceId };
   }
 
 
