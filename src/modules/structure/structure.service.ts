@@ -459,16 +459,21 @@ export class StructureService {
   async getManagementSpacesEvents(spaceEventId: string, date: string) {
     const { data: spacesEvents, error: spacesEventsError } = await this.supabase
       .from("space_events")
-      .select(`*, space_event_guests (*)`)
+      .select(`*, space_event_guests (*), space_events_relation_area_availability (*), condominium_areas (*)`)
       .eq("condominium_area_id", spaceEventId);
 
+    spacesEvents?.map(event => console.log(event))
     if (spacesEventsError) throw new Error(spacesEventsError.message);
+
     const events: EventSpace[] = camelcaseKeys(spacesEvents, { deep: true });
+
     const parsedDate = parseISO(date);
+
     const allDaysOfMonth = eachDayOfInterval({
       start: startOfMonth(parsedDate),
       end: endOfMonth(parsedDate),
     });
+
     const daysWithEvents = allDaysOfMonth.map(day => ({
       dayNumber: day.getDate(),
       dayName: format(day, 'EEEE', { locale: ptBR }),
@@ -476,10 +481,15 @@ export class StructureService {
       events: [],
     }));
 
-    for (const event of events) {
+    for (let event of events) {
+      const areaAvailabilityIdSelecteds = event.spaceEventsRelationAreaAvailability.map(option => option.areaAvailabilityId);
+      const eventFormatted = {
+        ...event,
+        areaAvailabilityIdSelecteds
+      }
       const eventDay = daysWithEvents.find(day => day.date === event.eventDate);
       if (eventDay) {
-        eventDay.events.push(event as never);
+        eventDay.events.push(eventFormatted as never);
       }
     }
     for (const day of daysWithEvents) {
@@ -489,12 +499,60 @@ export class StructureService {
   }
 
   async updateSpaceEvent(eventId, data: any) {
+    console.log(data, eventId)
     const guestsToUpdate = data.guests.filter(guest => guest.id);
     const guestsToCreate = data.guests.filter(guest => !guest.id);
-    const { error } = await this.supabase.from("space_events").update({
-      start_time: data.startTime,
-      end_time: data.endTime
-    })
+
+    const { data: spaceEvents, error: spaceEventsError } = await this.supabase.from('space_events')
+      .select(`*, space_events_relation_area_availability (*)`)
+      .eq('id', eventId)
+
+    if (spaceEventsError) throw new Error(spaceEventsError.message);
+
+    const spacesEventsCamelcase = camelcaseKeys(spaceEvents);
+
+    const periodsAlreadySelected = spacesEventsCamelcase?.[0]
+      .spaceEventsRelationAreaAvailability
+      .map(item => String(item.area_availability_id));
+
+    const periodsToRemove = periodsAlreadySelected.filter(periodSelected => !data.periodSelectedIds.includes(periodSelected));
+    const periodsToAdd = data.periodSelectedIds.filter(periodId => !periodsAlreadySelected.includes(periodId));
+
+    await Promise.all(periodsToRemove.map(async periodToRemoveId => {
+      await this.supabase.from('space_events_relation_area_availability')
+        .delete()
+        .eq('area_availability_id', periodToRemoveId)
+        .eq('event_id', eventId)
+    }))
+
+    await Promise.all(periodsToAdd.map(async (periodToAdd) => {
+      await this.supabase
+        .from('space_events_relation_area_availability')
+        .insert({
+          event_id: eventId,
+          area_availability_id: periodToAdd
+        })
+    }))
+
+    const { data: periods, error: periodsError } = await this.supabase
+      .from('area_availability')
+      .select('*')
+      .in('id', data.periodSelectedIds);
+
+    if (periodsError) throw new Error(periodsError.message);
+
+    periods.sort((a, b) => a.start_hour.localeCompare(b.start_hour));
+
+    const startTime = periods[0].start_hour;
+    const endTime = periods[periods.length - 1].end_hour;
+
+
+    console.log(periods)
+    const { error } = await this.supabase.from("space_events")
+      .update({
+        start_time: startTime,
+        end_time: endTime
+      })
       .eq('id', eventId)
 
     if (error) throw new Error(error.message)
@@ -525,20 +583,58 @@ export class StructureService {
   }
 
   async deleteEvent(eventId: string) {
+    await this.supabase.from('space_events_relation_area_availability').delete().eq('event_id', eventId)
     await this.supabase.from("space_event_guests").delete().eq("space_event_id", eventId);
     await this.supabase.from('space_events').delete().eq('id', eventId)
   }
 
-  async createEventSpace(data: any) {
-    const { error } = await this.supabase.from('space_events').insert({
-      event_date: data.eventDate,
-      start_time: data.startTime,
-      end_time: data.endTime,
-      condominium_area_id: data.condominiumAreaId,
-      apartment_id: data.apartmentId
-    })
+  async createEventSpace(data: {
+    condominiumAreaId: string
+    apartmentId: string
+    periodSelecteds: string[]
+    eventDate: string;
+  }) {
 
-    if (error) throw new Error(error.message)
+    const hoursSelectedResult = await Promise.all(data.periodSelecteds.map(async (periodId) => {
+      const { data } = await this.supabase
+        .from('area_availability')
+        .select("*")
+        .eq('id', periodId);
+
+      return data?.[0];
+    }))
+
+    hoursSelectedResult.sort((a, b) => a.start_hour.localeCompare(b.start_hour));
+
+    const startTime = hoursSelectedResult[0].start_hour;
+    const endTime = hoursSelectedResult[hoursSelectedResult.length - 1].end_hour;
+
+
+    console.log(startTime, endTime);
+    if (data.periodSelecteds.length === 0) throw new Error('Voce nao pode criar um evento sem horario');
+
+    const { data: eventsInserted, error } = await this.supabase.from('space_events').insert({
+      event_date: data.eventDate,
+      condominium_area_id: data.condominiumAreaId,
+      apartment_id: data.apartmentId,
+      start_time: startTime,
+      end_time: endTime,
+    })
+      .select('id');
+
+    if (error) throw new Error(error.message);
+
+    const currentEventInserted = eventsInserted?.[0];
+
+    console.log(currentEventInserted);
+
+    await Promise.all(data.periodSelecteds.map(async (periodId) => {
+      await this.supabase.from('space_events_relation_area_availability')
+        .insert({
+          event_id: currentEventInserted.id,
+          area_availability_id: periodId
+        })
+    }))
   }
 
   async getMaintenances(date: string, token: string) {
@@ -1410,4 +1506,17 @@ export class StructureService {
       throw new Error(error.message)
     }
   }
+
+  async getAreaAvailabilityOptions({ areaId }: { areaId: string }) {
+    const { data: areasOptions, error } = await this.supabase
+      .from('area_availability')
+      .select('*')
+      .eq('condominium_area_id', areaId);
+
+    if (error) throw new Error(error.message)
+
+    return camelcaseKeys(areasOptions, { deep: true });
+  }
+
+
 }

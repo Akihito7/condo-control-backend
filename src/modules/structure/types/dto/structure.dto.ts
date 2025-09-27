@@ -21,7 +21,7 @@ type WorkInfo = {
   employeeIds: number[]
 }
 
-export interface EventSpace {
+export type EventSpace = {
   id: number
   eventDate: string
   startTime: string
@@ -29,6 +29,7 @@ export interface EventSpace {
   apartmentId: number
   condominiumAreaId: number
   createdAt: Date
+  spaceEventsRelationAreaAvailability: any[]
 }
 
 export interface InterventionBody {

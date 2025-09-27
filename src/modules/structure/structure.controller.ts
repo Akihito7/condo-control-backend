@@ -269,4 +269,10 @@ export class StructureController {
     @Body() body: any) {
     return this.structureService.updateDetailsReportAsset(reportId, body)
   }
+
+  @Get('maintenance-backlog/options/area-availability/:areaId')
+  async getAreaAvailabilityOptions(@Param('areaId') areaId: string) {
+    return this.structureService.getAreaAvailabilityOptions({ areaId })
+  }
+
 }
