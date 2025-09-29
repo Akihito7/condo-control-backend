@@ -462,7 +462,6 @@ export class StructureService {
       .select(`*, space_event_guests (*), space_events_relation_area_availability (*), condominium_areas (*)`)
       .eq("condominium_area_id", spaceEventId);
 
-    spacesEvents?.map(event => console.log(event))
     if (spacesEventsError) throw new Error(spacesEventsError.message);
 
     const events: EventSpace[] = camelcaseKeys(spacesEvents, { deep: true });
@@ -593,6 +592,7 @@ export class StructureService {
     apartmentId: string
     periodSelecteds: string[]
     eventDate: string;
+    guests: { name: string, cpf: string }[]
   }) {
 
     const hoursSelectedResult = await Promise.all(data.periodSelecteds.map(async (periodId) => {
@@ -609,8 +609,6 @@ export class StructureService {
     const startTime = hoursSelectedResult[0].start_hour;
     const endTime = hoursSelectedResult[hoursSelectedResult.length - 1].end_hour;
 
-
-    console.log(startTime, endTime);
     if (data.periodSelecteds.length === 0) throw new Error('Voce nao pode criar um evento sem horario');
 
     const { data: eventsInserted, error } = await this.supabase.from('space_events').insert({
@@ -626,15 +624,30 @@ export class StructureService {
 
     const currentEventInserted = eventsInserted?.[0];
 
-    console.log(currentEventInserted);
-
-    await Promise.all(data.periodSelecteds.map(async (periodId) => {
-      await this.supabase.from('space_events_relation_area_availability')
-        .insert({
-          event_id: currentEventInserted.id,
-          area_availability_id: periodId
-        })
+    const periodsToInsert = data.periodSelecteds.map(periodId => ({
+      event_id: currentEventInserted.id,
+      area_availability_id: periodId
     }))
+
+    const { error: insertPeriodError } = await this.supabase
+      .from('space_events_relation_area_availability')
+      .insert(periodsToInsert)
+
+    if (insertPeriodError) throw new Error(insertPeriodError.message);
+
+    const guestsToInsert = data.guests.map(guest => ({
+      name: guest.name,
+      cpf: guest.cpf,
+      space_event_id: currentEventInserted.id,
+      created_at: new Date()
+    }));
+
+    const { error: errorInsertGuests } = await this.supabase
+      .from('space_event_guests')
+      .insert(guestsToInsert);
+
+    if (errorInsertGuests) throw new Error(errorInsertGuests.message)
+
   }
 
   async getMaintenances(date: string, token: string) {

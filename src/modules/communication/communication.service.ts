@@ -1036,9 +1036,6 @@ export class CommunicationService {
       throw new Error('Código não encontrado.');
     }
 
-    console.log(currentCode);
-
-
     if (new Date(currentCode.expires_at) < new Date()) {
       throw new Error('O código expirou. Por favor, solicite um novo código.');
     }
