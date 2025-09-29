@@ -30,6 +30,12 @@ export class FinanceController {
     return this.financeService.getDelinquencyRecords(token, date)
   }
 
+  @Get('/delinquency/:condominiumId/all-period')
+  async getDelinquencyRegisterAllPeriod(@Param() param: { condominiumId: string }) {
+    return this.financeService.getDelinquencyRegisterAllPeriod(param)
+  }
+
+
   @Get('/delinquency/:condominiumId/:date')
   async getDelinquencyRegister(@Param() param: GetDelinquencyParamsDTO) {
     return this.financeService.getDelinquencyRegister(param)

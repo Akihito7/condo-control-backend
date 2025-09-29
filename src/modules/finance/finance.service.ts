@@ -691,6 +691,34 @@ export class FinanceService {
     return camelcaseKeys(deliquencyRecordsWithDaysLate)
   }
 
+  async getDelinquencyRegisterAllPeriod(data: { condominiumId: string }) {
+    const { data: delinquencyRecords, error } = await this.supabase.from('delinquency_records')
+      .select(`
+        *,
+        categories (name)
+        `)
+      .eq('condominium_id', data.condominiumId)
+      .is('payment_date', null)
+      .order('due_date', { ascending: false })
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const deliquencyRecordsWithDaysLate = delinquencyRecords.map(delinquecy => {
+      const paymentDate = delinquecy.payment_date ? new Date(delinquecy.payment_date) : new Date();
+
+      const daysLate = differenceInDays(paymentDate, delinquecy.due_date);
+
+      return {
+        ...delinquecy,
+        categoryName: delinquecy?.categories?.name,
+        daysLate,
+      }
+    })
+
+    return camelcaseKeys(deliquencyRecordsWithDaysLate)
+  }
+
   async deleteDelinquency(delinquencyId: string) {
 
     const { data: financialRecords, error: financialRecordsError } = await this.supabase
@@ -799,6 +827,7 @@ export class FinanceService {
       .from('delinquency_records')
       .select("*")
       .eq('condominium_id', condominiumId)
+      .is('payment_date', null)
       .gte('due_date', startDate)
       .lte('due_date', endDate)
 
