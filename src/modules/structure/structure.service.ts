@@ -952,6 +952,10 @@ export class StructureService {
       endDate,
     });
 
+    const UNDER_ANALYSIS = 3;
+    const CANCELED = 4;
+    const statusExcluded = [CANCELED, UNDER_ANALYSIS]
+
     const maintenancePaymentsFormatted =
       camelcaseKeys(maintenancesPaymentsFilteredByCondominium.map(maintenance => flattenObject(maintenance))) as InterventionPayment[]
 
@@ -959,18 +963,15 @@ export class StructureService {
 
     const newMonthlyFixedCosts = maintenancePaymentsFormatted.reduce((total, intervention) => {
       const paymentDate = intervention.paymentDate.slice(0, 7)
-
-      const UNDER_ANALYSIS = 3;
-      const CANCELED = 4;
-      const statusExcluded = [CANCELED, UNDER_ANALYSIS]
       const monthIsMatch = paymentDate === monthCurrentDate
       const shouldCount =
         monthIsMatch && intervention.isInstallment && !statusExcluded.includes(intervention.maintenancesStatusId)
 
       return total + (shouldCount ? intervention.amount : 0)
     }, 0)
-
-    const uniqueRegistersId = new Set(maintenancePaymentsFormatted.map(item => item.maintenanceId));
+ 
+    const registersFiltered = maintenancePaymentsFormatted.filter(register => !statusExcluded.includes(register.maintenancesStatusId))
+    const uniqueRegistersId = new Set(registersFiltered.map(register => register.maintenanceId))
     const approvedImprovementsCost = maintenancePaymentsFormatted.reduce((acc, intervention) => {
       if (uniqueRegistersId.has(intervention.maintenanceId)) {
         uniqueRegistersId.delete(intervention.maintenanceId)
