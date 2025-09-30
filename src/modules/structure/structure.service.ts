@@ -969,7 +969,7 @@ export class StructureService {
 
       return total + (shouldCount ? intervention.amount : 0)
     }, 0)
- 
+
     const registersFiltered = maintenancePaymentsFormatted.filter(register => !statusExcluded.includes(register.maintenancesStatusId))
     const uniqueRegistersId = new Set(registersFiltered.map(register => register.maintenanceId))
     const approvedImprovementsCost = maintenancePaymentsFormatted.reduce((acc, intervention) => {
@@ -1075,10 +1075,13 @@ export class StructureService {
 
       }
 
+      const hasReportNotFinished = asset.asset_reports.some(report => report.status != 'finalizado');
+
       return {
         ...asset,
         reportCount: asset.asset_reports.length,
-        publicUrl: publicUrlAsset
+        publicUrl: publicUrlAsset,
+        hasReportNotFinished
       }
     }))
 
