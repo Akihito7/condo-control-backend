@@ -105,7 +105,8 @@ export class CommunicationService {
       `)
       .eq('condominium_id', condominiumId)
       .gte('date', startDate)
-      .lte('date', endDate);
+      .lte('date', endDate)
+      .order('date', { ascending: false })
 
 
     if (error) {
