@@ -4,7 +4,7 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { AuthService } from "../auth/auth.service";
 import * as bcrypt from "bcrypt"
 import camelcaseKeys from "camelcase-keys";
-import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes } from 'date-fns';
+import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes, addMonths } from 'date-fns';
 import { bn, id, ptBR } from 'date-fns/locale';
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { flattenObject } from "src/utils/flatten-object";
@@ -498,7 +498,6 @@ export class StructureService {
   }
 
   async updateSpaceEvent(eventId, data: any) {
-    console.log(data, eventId)
     const guestsToUpdate = data.guests.filter(guest => guest.id);
     const guestsToCreate = data.guests.filter(guest => !guest.id);
 
@@ -545,8 +544,6 @@ export class StructureService {
     const startTime = periods[0].start_hour;
     const endTime = periods[periods.length - 1].end_hour;
 
-
-    console.log(periods)
     const { error } = await this.supabase.from("space_events")
       .update({
         start_time: startTime,
@@ -659,8 +656,6 @@ export class StructureService {
     const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd')
 
     const condominiumId = userInfo.condominiumId;
-
-    // Buscar todas as manutenções com seus payments sem filtro no supabase
     const { data: maintenances, error: maintenancesError } = await this.supabase
       .from('maintenances')
       .select(`
@@ -677,17 +672,17 @@ export class StructureService {
     if (maintenancesError) {
       throw new Error(maintenancesError.message);
     }
+    const filteredMaintenances = maintenances.filter(maintenance => {
+      const quantityPayments = maintenance.maintenance_payments.length;
 
-    // Filtrar manualmente as manutenções para pegar apenas as que tenham ao menos
-    // um payment com payment_date dentro do intervalo startDate-endDate
-    const filteredMaintenances = maintenances.filter(maintenance =>
-      maintenance.maintenance_payments.some(payment => {
+      if (quantityPayments === 0) return true
+
+      return maintenance.maintenance_payments.some(payment => {
         const paymentDate = new Date(payment.payment_date);
         return paymentDate >= new Date(startOfYear) && paymentDate <= new Date(endOfYear);
       })
+    }
     );
-
-    // Se precisar formatar camelCase e flatten, adapte aqui
     const maintenancesFormatted: any[] = camelcaseKeys(filteredMaintenances.map(maintenance => flattenObject(maintenance)));
 
     return maintenancesFormatted;
@@ -695,10 +690,10 @@ export class StructureService {
 
 
   async createMaintenance(condominiumId: string, token: string, data: InterventionBody) {
-    const durationTranslateToEnglish = translateComplexDurationToEnglish(data.duration!);
     const { userId } = await this.authService.decodeToken(token);
 
-    // Inserir manutenção
+    const paymentMethodFormatted = data.paymentMethod ? data.paymentDate : null;
+
     const { data: insertedMaintenances, error } = await this.supabase
       .from('maintenances')
       .insert({
@@ -706,9 +701,9 @@ export class StructureService {
         type_id: data.type,
         description: data.description,
         supplier: data.provider,
-        amount: Number(data.value),
-        payment_method: data.paymentMethod,
-        payment_date: data.paymentDate,
+        amount: data.value ? Number(data.value) : 0,
+        payment_method: paymentMethodFormatted,
+        payment_date: data.paymentDate?.toISOString(),
         payment_completion_date: data.paymentCompletionDate,
         condominium_area_id: data.area,
         status_id: data.status,
@@ -739,8 +734,7 @@ export class StructureService {
       const installmentValue = Number(data.value) / numberOfInstallments;
 
       for (let i = 0; i < numberOfInstallments; i++) {
-        const paymentDate = new Date(initialDate);
-        paymentDate.setMonth(paymentDate.getMonth() + i); // soma i meses
+        const paymentDate = addMonths(initialDate, i)
 
         paymentsToInsert.push({
           maintenance_id: maintenanceId,
@@ -766,43 +760,122 @@ export class StructureService {
 
     const { userId } = await this.authService.decodeToken(token);
 
-    const durationTranslateToEnglish = translateComplexDurationToEnglish(data.duration!);
-
     const userInfo = await this.authService.me(userId);
 
     const condominiumId = userInfo.condominiumId;
 
-    const { error } = await this.supabase.from('maintenances').update({
-      priority_id: data.priority,
-      type_id: data.type,
-      description: data.description,
-      supplier: data.provider,
-      amount: Number(data.value),
-      payment_method: data.paymentMethod,
-      payment_date: data.paymentDate,
-      payment_completion_date: data.paymentCompletionDate,
-      condominium_area_id: data.area,
-      status_id: data.status,
-      created_at: new Date(),
-      created_by_id: userId,
-      condominium_id: condominiumId,
-      planned_start: data.plannedStart,
-      planned_end: data.plannedEnd,
-      execution_time: durationTranslateToEnglish,
-      actual_start: data.actualStart,
-      actual_end: data.actualEnd
-    })
+    const { data: maintenances, error: maintenancesError } = await this.supabase
+      .from('maintenances')
+      .select('*')
+      .eq('id', maintenanceId);
+
+    if (maintenancesError) throw new Error(maintenancesError.message);
+
+    const { error } = await this.supabase
+      .from('maintenances')
+      .update({
+        priority_id: data.priority,
+        type_id: data.type,
+        description: data.description,
+        supplier: data.provider,
+        amount: Number(data.value),
+        payment_method: data.paymentMethod,
+        payment_date: data.paymentDate,
+        payment_completion_date: data.paymentCompletionDate,
+        condominium_area_id: data.area,
+        status_id: data.status,
+        created_at: new Date(),
+        created_by_id: userId,
+        condominium_id: condominiumId,
+        planned_start: data.plannedStart,
+        planned_end: data.plannedEnd,
+        actual_start: data.actualStart,
+        actual_end: data.actualEnd,
+        is_installment: data.isInstallment
+      })
       .eq('id', maintenanceId);
 
 
-    const installmentValue = Number(data.value) / data.numberOfInstallments
+    const currentMaintenance = maintenances?.[0];
+
+    const alreadyInstallment = currentMaintenance.is_installment;
+
+    const keepInstallment = alreadyInstallment && data.isInstallment;
+
+    const isInstallment = data.isInstallment;
+
     await this.supabase.from('maintenance_payments')
-      .update({
-        amount: Number(installmentValue),
-      })
+      .delete()
       .eq('maintenance_id', maintenanceId);
 
-    if (error) throw new Error(error.message);
+    const { error: maintenanceErrorUpate } = await this.supabase
+      .from('maintenances')
+      .update({
+        is_installment: false,
+        number_of_installments: null
+      })
+      .eq('id', maintenanceId)
+
+    if (maintenanceErrorUpate) throw new Error(maintenanceErrorUpate.message)
+
+    if (keepInstallment || isInstallment) {
+      if (data.paymentDate && data.value) {
+
+        await this.supabase.from('maintenances').update({
+          is_installment: true,
+          number_of_installments: data.numberOfInstallments ?? 1
+        })
+          .eq('id', maintenanceId)
+        const paymentsToInsert: any[] = [];
+
+        const initialDate = new Date(data.paymentDate);
+        const numberOfInstallments = data.numberOfInstallments ?? 1
+
+        const installmentValue = Number(data.value) / numberOfInstallments;
+
+        for (let i = 0; i < numberOfInstallments; i++) {
+          const paymentDate = addMonths(initialDate, i)
+
+          paymentsToInsert.push({
+            maintenance_id: maintenanceId,
+            payment_date: paymentDate.toISOString(),
+            amount: installmentValue,
+            is_installment: data.isInstallment,
+            created_at: new Date(),
+            updated_at: new Date(),
+          });
+        }
+
+        const { error: paymentsError } = await this.supabase
+          .from('maintenance_payments')
+          .insert(paymentsToInsert);
+
+        if (paymentsError) throw new Error(paymentsError.message);
+      }
+    }
+
+
+    if (!isInstallment && !keepInstallment && data.paymentDate && data.value) {
+
+      await this.supabase.from('maintenances').update({
+        is_installment: false,
+        number_of_installments: null
+      })
+        .eq('id', maintenanceId);
+
+      const paymentDate = new Date(data.paymentDate);
+      const { error: paymentsError } = await this.supabase
+        .from('maintenance_payments')
+        .insert({
+          maintenance_id: maintenanceId,
+          payment_date: paymentDate.toISOString(),
+          amount: Number(data.value),
+          is_installment: data.isInstallment,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+    }
+
 
   }
 
@@ -887,13 +960,12 @@ export class StructureService {
     const newMonthlyFixedCosts = maintenancePaymentsFormatted.reduce((total, intervention) => {
       const paymentDate = intervention.paymentDate.slice(0, 7)
 
+      const UNDER_ANALYSIS = 3;
+      const CANCELED = 4;
+      const statusExcluded = [CANCELED, UNDER_ANALYSIS]
       const monthIsMatch = paymentDate === monthCurrentDate
       const shouldCount =
-        monthIsMatch &&
-        (
-          (intervention.isInstallment && intervention.maintenancesStatusId !== 4) ||
-          intervention.maintenanceId !== 3
-        )
+        monthIsMatch && intervention.isInstallment && !statusExcluded.includes(intervention.maintenancesStatusId)
 
       return total + (shouldCount ? intervention.amount : 0)
     }, 0)
