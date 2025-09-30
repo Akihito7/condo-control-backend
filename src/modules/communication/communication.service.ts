@@ -456,7 +456,7 @@ export class CommunicationService {
       .insert({
         description: data.description,
         received_at: data.receivedDate,
-        picked_at_up: data.deliveredDate,
+        picked_up_at: data.deliveredDate,
         condominium_id: data.condominiumId,
         apartment_id: apartamentId,
         status: statusDelivery,
