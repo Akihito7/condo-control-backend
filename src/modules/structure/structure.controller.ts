@@ -73,6 +73,23 @@ export class StructureController {
     return this.structureService.getManagementSpacesEvents(spaceId, date)
   }
 
+  @Get('management-spaces/indicators/cards/:date')
+  async getManagementSpacesIndicatorsCards(@Param('date') date: string, @Token() token: string) {
+    return this.structureService.getManagementSpacesIndicatorsCards({ date, token })
+  }
+
+
+  @Get('management-spaces/indicators/areas-bookings/:date')
+  async getManagementBookingsByAreas(@Param('date') date: string, @Token() token: string) {
+    return this.structureService.getManagementBookingsByAreas({ date, token })
+  }
+
+
+  @Get('management-spaces/indicators/percentage-by-area/:date')
+  async getManagementPercentageByArea(@Param('date') date: string, @Token() token: string) {
+    return this.structureService.getManagementPercentageByArea({ date, token })
+  }
+
   @Put('management-spaces/events/:eventId')
   async updateSpaceEvent(
     @Param('eventId') eventId: string,

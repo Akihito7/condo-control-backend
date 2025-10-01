@@ -1607,5 +1607,77 @@ export class StructureService {
     return camelcaseKeys(areasOptions, { deep: true });
   }
 
+  async getManagementSpacesIndicatorsCards({ date, token }: { date: string, token: string }) {
+    const {
+      startDate,
+      endDate
+    } = getFullMonthInterval(date);
 
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data: events, error: eventsError } = await this.supabase
+      .from('space_events')
+      .select(`*, space_events_relation_area_availability (*), condominium_areas (*)`)
+      .gte('event_date', startDate)
+      .lte('event_date', endDate);
+
+    if (eventsError) throw new Error(eventsError.message);
+
+    const eventsCamelcase = camelcaseKeys(events, { deep: true })
+
+    const { data: totalAvailableTimesMonth } = await this.supabase.rpc("get_total_area_availability", {
+      p_date: startDate,
+      p_condominium_id: condominiumId
+    })
+
+    const totalBookingsMonth = eventsCamelcase.reduce((acc, event) => acc += event.spaceEventsRelationAreaAvailability.length, 0);
+    const totalOccupationMonth = ((totalBookingsMonth / totalAvailableTimesMonth) * 100).toFixed(2)
+    const totalRevenueMOnth = eventsCamelcase.reduce((acc, event) => {
+      const total = event.condominiumAreas.hourlyRent * event.spaceEventsRelationAreaAvailability.length;
+      return acc += total
+    }, 0);
+
+    return {
+      totalBookingsMonth,
+      totalOccupationMonth,
+      totalRevenueMOnth
+    }
+  }
+
+  async getManagementBookingsByAreas({ date, token }: { date: string, token: string }) {
+    const { startDate, endDate } = getFullMonthInterval(date);
+
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+
+    const { data, error } = await this.supabase.rpc('get_area_event_count', {
+      p_start_date: startDate,
+      p_end_date: endDate,
+      p_condominium_id: condominiumId
+    })
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data);
+  }
+
+  async getManagementPercentageByArea({ date, token }: { date: string, token: string }) {
+    const { startDate, endDate } = getFullMonthInterval(date);
+
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data, error } = await this.supabase
+      .rpc('get_area_event_indicators_percentage', {
+        p_condominium_id: condominiumId,
+        p_start_date: startDate,
+        p_end_date: endDate
+      });
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data);
+  }
 }
