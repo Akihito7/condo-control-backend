@@ -692,7 +692,7 @@ export class StructureService {
   async createMaintenance(condominiumId: string, token: string, data: InterventionBody) {
     const { userId } = await this.authService.decodeToken(token);
 
-    const paymentMethodFormatted = data.paymentMethod ? data.paymentDate : null;
+    const paymentMethodFormatted = data.paymentMethod ? data.paymentMethod : null;
 
     const { data: insertedMaintenances, error } = await this.supabase
       .from('maintenances')
@@ -703,7 +703,7 @@ export class StructureService {
         supplier: data.provider,
         amount: data.value ? Number(data.value) : 0,
         payment_method: paymentMethodFormatted,
-        payment_date: data.paymentDate?.toISOString(),
+        payment_date: data.paymentDate,
         payment_completion_date: data.paymentCompletionDate,
         condominium_area_id: data.area,
         status_id: data.status,

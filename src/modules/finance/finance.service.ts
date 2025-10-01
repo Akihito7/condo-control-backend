@@ -3,7 +3,7 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { SupabaseClient } from "@supabase/supabase-js";
 import camelcaseKeys from "camelcase-keys";
 import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody } from "./types/dto/finance.dto";
-import { startOfMonth, subMonths, format, differenceInMonths, isThisISOWeek, differenceInDays, addMonths, parseISO } from "date-fns"
+import { startOfMonth, subMonths, format, differenceInMonths, isThisISOWeek, differenceInDays, addMonths, parseISO, differenceInCalendarMonths } from "date-fns"
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { FinanceResponseData } from "./types/response/finance.response";
 import { AuthService } from "../auth/auth.service";
@@ -512,8 +512,7 @@ export class FinanceService {
   async getProjectionCards(data: GetProjectionParams) {
     const currentDate = new Date()
     const dateSubtractOneMonth = format(currentDate, "yyyy-MM-dd");
-    const dateFromParams = new Date(data.date);
-    const quantityOfMonths = differenceInMonths(startOfMonth(dateFromParams), startOfMonth(currentDate));
+    const dateBetweenCurrentDate = differenceInCalendarMonths(new Date(data.date), currentDate)
     const { startDate, endDate } = getFullMonthInterval(dateSubtractOneMonth);
     const INCOME_TYPE_ID = 4;
     const EXPENSE_TYPE_ID = 6;
@@ -581,7 +580,7 @@ export class FinanceService {
       }
     })
 
-    let balanceAccumulated = balance + accumulatedBalance;
+    let balanceAccumulated = (balance * dateBetweenCurrentDate) + accumulatedBalance;
 
     return {
       incomesTotal,
