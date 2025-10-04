@@ -1680,4 +1680,66 @@ export class StructureService {
 
     return camelcaseKeys(data);
   }
+
+  async getMonthlyRevenueAndOccupation({ token, date }: { token: string, date: string }) {
+
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+    const [year] = date.split('-')
+
+    const startDate = `${year}/01/01`
+    const endDate = `${year}/12/31`
+    const allMonthsIndex = Array.from({ length: 12 });
+
+    const { data: eventsData, error: errorEvents } = await this.supabase.from("space_events")
+      .select(`
+        *, 
+        condominium_areas (*),
+        space_events_relation_area_availability (*)
+        `)
+      .gte('event_date', startDate)
+      .lte('event_date', endDate)
+
+    if (errorEvents) throw new Error(errorEvents.message);
+
+    const eventsCamelcase = camelcaseKeys(eventsData, { deep: true })
+
+
+    const dataFormatted = await Promise.all(allMonthsIndex.map(async (_, index) => {
+      const date = new Date(`${year}/${String(index + 1).padStart(2, '0')}/01`);
+      const { startDate } = getFullMonthInterval(date.toISOString());
+
+      const eventsFilteredByCurrentMonth = eventsCamelcase.filter(event => {
+        const [year, month] = event.eventDate.split('-')
+        const dateEventFormatted = `${year}-${month}-01`
+        const isSameMonth = dateEventFormatted === startDate
+        return isSameMonth
+      });
+
+      const { data: totalAvailableTimesMonth } = await this.supabase.rpc("get_total_area_availability", {
+        p_date: startDate,
+        p_condominium_id: condominiumId
+      })
+
+      const totalPeriods = eventsFilteredByCurrentMonth.reduce((acc, event) => acc += event.spaceEventsRelationAreaAvailability.length, 0);
+      const totalRevenue = eventsFilteredByCurrentMonth.reduce((acc, event) => {
+        const { hourlyRent } = event.condominiumAreas;
+        const totalPeriodCurrentEvent = event.spaceEventsRelationAreaAvailability.length;
+        const totalAmount = hourlyRent * totalPeriodCurrentEvent;
+        return acc += totalAmount
+      }, 0)
+      const totalOccupation = ((totalPeriods / totalAvailableTimesMonth) * 100).toFixed(2);
+
+      return {
+        monthName: months[index],
+        totalRevenue,
+        totalOccupation
+      }
+    }))
+
+    return dataFormatted;
+  }
 }

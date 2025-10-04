@@ -90,6 +90,11 @@ export class StructureController {
     return this.structureService.getManagementPercentageByArea({ date, token })
   }
 
+  @Get('management-spaces/indicators/monthly-revenue-and-occupation/:date')
+  async getMonthlyRevenueAndOccupation(@Param('date') date: string, @Token() token: string) {
+    return this.structureService.getMonthlyRevenueAndOccupation({ token, date })
+  }
+
   @Put('management-spaces/events/:eventId')
   async updateSpaceEvent(
     @Param('eventId') eventId: string,
