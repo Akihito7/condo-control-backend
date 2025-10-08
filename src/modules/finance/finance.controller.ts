@@ -1,9 +1,10 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Put, Query, Res, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Put, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, QueryGetRegistersByCondominiumId, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody, UpdateRevenueBody, UpdateRevenueParams } from "./types/dto/finance.dto";
 import { FinanceService } from "./finance.service";
 import { Roles, RolesGuard } from "src/decorators/roles.decorator";
 import { AuthGuard } from "src/guards/auth.guard";
 import { Token } from "src/decorators/token.decorator";
+import { FilesInterceptor } from "@nestjs/platform-express";
 
 @Controller('finance')
 @UseGuards(AuthGuard, RolesGuard)
@@ -23,11 +24,29 @@ export class FinanceController {
       .getFinancialRecordsByCondominiumId(filters);
   }
 
+  @Post('register/upload/files')
+  @UseInterceptors(FilesInterceptor('attachment'))
+  async uploadFinanceFiles(
+    @Body() body: any,
+    @UploadedFiles() attachments: any) {
+    return this.financeService.uploadFinanceFiles(body, attachments)
+  }
+
+  @Delete('register/delete/file/:fileId')
+  async deleteFinanceFile(@Param('fileId') fileId: string) {
+    return this.financeService.deleteFinanceFile(fileId)
+  }
+
   @Get('delinquency/monthly-evolution/:date')
   async getDelinquencyRecords(
     @Token() token: string, @Param() params: any) {
     const { date } = params;
     return this.financeService.getDelinquencyRecords(token, date)
+  }
+
+  @Post('supabase/publicurl')
+  async getSupabasePublicUrl(@Body() body: { fullPath }) {
+    return this.financeService.getSupabasePublicUrl(body.fullPath)
   }
 
   @Get('/delinquency/:condominiumId/all-period')
@@ -90,9 +109,13 @@ export class FinanceController {
     return this.financeService.getPaymentStatusOptions()
   }
 
+  @UseInterceptors(FilesInterceptor('attachments'))
   @Post("create-transaction")
-  async createTransaction(@Body() body: BodyTransaction) {
-    return this.financeService.createTransaction(body)
+  async createTransaction(
+    @Body() body: BodyTransaction,
+    @UploadedFiles() attachments: any
+  ) {
+    return this.financeService.createTransaction(body, attachments)
   }
 
   @Get('revenue-total/:condominiumId/:startDate/:endDate')

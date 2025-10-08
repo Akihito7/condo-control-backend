@@ -8,6 +8,8 @@ import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { FinanceResponseData } from "./types/response/finance.response";
 import { AuthService } from "../auth/auth.service";
 import { flattenObject } from "src/utils/flatten-object";
+import { normalizeFileName } from "src/utils/normalize-file-name";
+import { v4 } from "uuid";
 
 
 
@@ -50,6 +52,15 @@ export class FinanceService {
       .in('income_expense_type_id', incomeExpenseOptions);
     const categoryIds = categories?.map(c => c.id) ?? [];
 
+
+    const { data: attachments, error: attachmentsError } = await this.supabase
+      .from('attachments')
+      .select('*')
+      .eq('condominium_id', condominiumId)
+      .eq('screen_origin', 'finance')
+
+    if (attachmentsError) throw new Error(attachmentsError.message);
+
     const { data, error } = await this.supabase.rpc('get_filtered_financial_records', {
       p_condominium_id: condominiumId,
       p_start_date: startDate,
@@ -57,28 +68,101 @@ export class FinanceService {
       p_category_ids: categoryIds,
     });
 
-
-
     if (error) {
       throw new Error(error.message)
     }
 
-    const normalized = data.map((record) => ({
-      ...record,
-      category_name: record.categories?.name || null,
-      category_type_id: record.categories?.income_expense_type_id || null,
-      category_type_name: record.categories?.income_expense_types?.name || null,
-      payment_method_name: record.payment_methods?.name || null,
-      payment_status_name: record.payment_status?.name || null,
-      apartment_number: record.apartment?.apartment_number || null,
-      apartment_id: record.apartment?.id || null,
-      income_expense_type_id: record.categories?.income_expense_type_id || null,
-      payment_method_id: record.payment_methods?.id || null,
-      payment_status_id: record.payment_methods?.id || null,
-      record_type_id: record.categories?.record_type_id || null
-    }));
+    const normalized = data.map((record) => {
 
-    return camelcaseKeys(normalized)
+      const recordAttchaments = attachments.filter(attachment => attachment.related_id === record.id);
+
+      return (
+        {
+          ...record,
+          category_name: record.categories?.name || null,
+          category_type_id: record.categories?.income_expense_type_id || null,
+          category_type_name: record.categories?.income_expense_types?.name || null,
+          payment_method_name: record.payment_methods?.name || null,
+          payment_status_name: record.payment_status?.name || null,
+          apartment_number: record.apartment?.apartment_number || null,
+          apartment_id: record.apartment?.id || null,
+          income_expense_type_id: record.categories?.income_expense_type_id || null,
+          payment_method_id: record.payment_methods?.id || null,
+          payment_status_id: record.payment_methods?.id || null,
+          record_type_id: record.categories?.record_type_id || null,
+          attachments: recordAttchaments
+        }
+      )
+    });
+
+    return camelcaseKeys(normalized, { deep: true })
+  }
+
+  async uploadFinanceFiles(body, attachamnets) {
+
+    const { transactionId, condominiumId } = body;
+
+    const newAttachamnets = await Promise.all(attachamnets.map(async attachment => {
+      const fileName = normalizeFileName(attachment.originalname);
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const { data: fileData, error } = await this.supabase.storage
+        .from('condo')
+        .upload(`uploads/${uniqueFileName}`, attachment.buffer);
+
+      if (error) console.log('FINANCE UPLOAD FILES ERROR : ', error.message);
+
+      const { data: attachamentsInserted, error: insertFileError } = await this.supabase.from('attachments').insert({
+        related_type: 'finance',
+        related_id: transactionId,
+        condominium_id: condominiumId,
+        date: format(new Date(), 'yyyy-MM-dd'),
+        path: fileData?.fullPath,
+        bucket_name: 'condo',
+        original_name: attachment.originalname,
+        screen_origin: 'finance',
+        created_at: new Date(),
+        supabase_id: fileData?.id,
+      })
+        .select('*')
+
+      if (insertFileError) console.log(insertFileError.message)
+
+      return attachamentsInserted?.[0]
+    }))
+
+    return camelcaseKeys(newAttachamnets, { deep: true });
+
+  }
+
+  async deleteFinanceFile(fileId: string) {
+    console.log("its me file id", fileId);
+
+    const { data: files, error } = await this.supabase
+      .from('attachments')
+      .select('*')
+      .eq('id', fileId);
+
+    if (error) throw new Error(error.message);
+
+    const currentFile = files?.[0];
+
+    if (!currentFile) throw new Error('File not found.')
+
+    await this.supabase
+      .from('attachments')
+      .delete()
+      .eq('id', fileId);
+
+    const bucketName = "condo";
+
+    const pathRecord = currentFile.path
+
+    const relativePath = pathRecord.startsWith(`${bucketName}/`)
+      ? pathRecord.slice(bucketName.length + 1)
+      : pathRecord;
+
+    await this.supabase.storage.from('condo').remove([relativePath])
+
   }
 
   async getCategoriesOptions() {
@@ -138,8 +222,8 @@ export class FinanceService {
     return camelcaseKeys(data);
   }
 
-  async createTransaction(data: BodyTransaction) {
-    const { error } = await this.supabase.from("financial_records").insert([
+  async createTransaction(data: BodyTransaction, files: any) {
+    const { data: finances, error } = await this.supabase.from("financial_records").insert([
       {
         condominium_id: data.condominiumId,
         category_id: data.categoryId,
@@ -155,10 +239,51 @@ export class FinanceService {
         payment_date: data.paymentDate,
       }
     ])
+      .select('id');
 
     if (error) {
       throw new Error(error.message)
     }
+
+    const currentFinance = finances?.[0]
+
+    const filesToSave = await Promise.all(files.map(async file => {
+      const fileName = normalizeFileName(file.originalname);
+      const uuid = v4();
+      const uniqueFileName = `${uuid}-${fileName}`;
+      const projectUrl = "https://vtupybmxylkunzpgxwex.supabase.co";
+      const bucket = "condo";
+
+      const { data: fileData, error } = await this.supabase.storage
+        .from(bucket)
+        .upload(`uploads/${uniqueFileName}`, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const { path, id } = fileData;
+
+      const publicUrl = `${projectUrl}/storage/v1/object/public/${bucket}/${path}`;
+
+      const { data: attachments, error: attachmentsError } = await this.supabase.from('attachments')
+        .insert({
+          related_type: 'finance',
+          related_id: currentFinance.id,
+          condominium_id: data.condominiumId,
+          date: data.dueDate,
+          path,
+          bucket_name: bucket,
+          original_name: file.originalname,
+          screen_origin: 'finance',
+          created_at: new Date(),
+          supabase_id: id
+        })
+    }))
+
   }
 
   async getRevenueTotal({
@@ -956,5 +1081,18 @@ export class FinanceService {
 
     return camelcaseKeys(data);
 
+  }
+
+  async getSupabasePublicUrl(fullPath: string) {
+
+    const relativePath = fullPath.startsWith(`condo/`)
+      ? fullPath.slice(6)
+      : fullPath;
+
+    const { data } = await this.supabase.storage
+      .from('condo')
+      .getPublicUrl(relativePath);
+
+    return data.publicUrl;
   }
 }
