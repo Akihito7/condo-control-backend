@@ -112,70 +112,106 @@ export class AuthService {
 
     const user = resultUsers.data?.[0];
     const userRole = user.user_association?.[0]?.role;
+    console.log(user)
 
-    const condominiumId = user.user_association?.[0]?.condominium_id;
+    if (!user.is_super) {
+      const condominiumId = user.user_association?.[0]?.condominium_id;
 
-    const { data: condominiums, error } = await this.supabase
-      .from('condominium')
-      .select("*")
-      .eq('id', condominiumId);
+      const { data: condominiums, error } = await this.supabase
+        .from('condominium')
+        .select("*")
+        .eq('id', condominiumId);
 
-    const currentCondominium = condominiums?.[0];
+      const currentCondominium = condominiums?.[0];
 
-    const tenantId = currentCondominium?.tenant_id;
+      const tenantId = currentCondominium?.tenant_id;
 
-    const { data: tenants } = await this.supabase
-      .from('tenant')
-      .select("*")
-      .eq('id', tenantId);
+      const { data: tenants } = await this.supabase
+        .from('tenant')
+        .select("*")
+        .eq('id', tenantId);
 
-    const currentTenant = tenants?.[0];
-    const planId = currentTenant?.plan_id;
+      const currentTenant = tenants?.[0];
+      const planId = currentTenant?.plan_id;
 
-    const { data: pages } = await this.supabase
-      .from('plan_page')
-      .select("*")
-      .eq("plan_id", planId)
+      const { data: pages } = await this.supabase
+        .from('plan_page')
+        .select("*")
+        .eq("plan_id", planId)
 
-    const { data: pagesWithPermissionByRole } = await this.supabase
-      .from('role_page_relation')
-      .select(`*, page (*)`)
-      .eq('role_name', userRole);
+      const { data: pagesWithPermissionByRole } = await this.supabase
+        .from('role_page_relation')
+        .select(`*, page (*)`)
+        .eq('role_name', userRole);
 
-    const { data: modulesWithPermissionByRole } = await this.supabase
-      .from('role_module_relation')
-      .select(`*, module (*)`)
-      .eq('role_name', userRole);
+      const { data: modulesWithPermissionByRole } = await this.supabase
+        .from('role_module_relation')
+        .select(`*, module (*)`)
+        .eq('role_name', userRole);
 
 
-    const pagesWithPermissionByRoleFormatted = camelcaseKeys(pagesWithPermissionByRole?.map(page => flattenObject(page)) ?? []);
-    const modulesWithPermissionByRoleFormatted = camelcaseKeys(modulesWithPermissionByRole?.map(module => flattenObject(module)) ?? []);
+      const pagesWithPermissionByRoleFormatted = camelcaseKeys(pagesWithPermissionByRole?.map(page => flattenObject(page)) ?? []);
+      const modulesWithPermissionByRoleFormatted = camelcaseKeys(modulesWithPermissionByRole?.map(module => flattenObject(module)) ?? []);
 
-    const tabStructure = modulesWithPermissionByRoleFormatted
-      .filter((module: any) => !!module.read)
-      .map((module: any) => {
-        const pagesToThisModule = pagesWithPermissionByRoleFormatted.filter((page: any) => page.pageModuleId === module.moduleId && !!page.read);
-        console.log(pagesToThisModule)
-        const pagesToThisPlan = pagesToThisModule.filter((page: any) => pages?.some(pagePlan => pagePlan.page_id === page.pageId))
-        return {
-          moduleId: module.moduleId,
-          moduleName: module.moduleName,
-          moduleRoutePath: module.moduleRoutePath,
-          modulePages: pagesToThisPlan,
-        }
-      })
+      const tabStructure = modulesWithPermissionByRoleFormatted
+        .filter((module: any) => !!module.read)
+        .map((module: any) => {
+          const pagesToThisModule = pagesWithPermissionByRoleFormatted.filter((page: any) => page.pageModuleId === module.moduleId && !!page.read);
+          const pagesToThisPlan = pagesToThisModule.filter((page: any) => pages?.some(pagePlan => pagePlan.page_id === page.pageId))
+          return {
+            moduleId: module.moduleId,
+            moduleName: module.moduleName,
+            moduleRoutePath: module.moduleRoutePath,
+            modulePages: pagesToThisPlan,
+          }
+        })
+      const normalizedData = {
+        ...user,
+        user_association: user.user_association?.[0],
+        condominiumId: user.user_association?.[0]?.condominium_id || null,
+        pagesWithPermissionByRole: pagesWithPermissionByRoleFormatted,
+        modulesWithPermissionByRole: modulesWithPermissionByRoleFormatted,
+        tabStructure
+      }
+      const userObjectFlatten = camelcaseKeys(flattenObject(normalizedData)) as User;
+      return userObjectFlatten
+
+    }
+
+    const { data: superModule, error: errorSuperModules } = await this.supabase.from('module')
+      .select('*, page (*)')
+      .eq('is_super', true);
+
+    const tabStructure = superModule?.map(module => ({
+      moduleId: module.id,
+      moduleName: module.name,
+      moduleRoutePath: module.route_path,
+      modulePages: module.page.map(page => ({
+        pageId : page.id,
+        roleName : 'super',
+        read : true,
+        write : true,
+        edit : true,
+        delete : true,
+        pageName : page.name,
+        pageModuleId : module.id,
+        pageCreatedAt : page.created_at,
+        pageUpdatedAt : page.updated_at,
+        pageIconName : page.icon_name,
+        pageRoutePath : page.route_path,
+      }))
+    }))
+
     const normalizedData = {
       ...user,
-      user_association: user.user_association?.[0],
-      condominiumId: user.user_association?.[0]?.condominium_id || null,
-      pagesWithPermissionByRole: pagesWithPermissionByRoleFormatted,
-      modulesWithPermissionByRole: modulesWithPermissionByRoleFormatted,
+      condominiumId: null,
+      pagesWithPermissionByRole: [],
+      modulesWithPermissionByRole: [],
       tabStructure
     }
 
-    const userObjectFlatten = camelcaseKeys(flattenObject(normalizedData)) as User;
+    const userObjectFlatten = camelcaseKeys(flattenObject(normalizedData), { deep: true }) as User;
     return userObjectFlatten
-
   }
 
   async generateToken(userId: string) {
