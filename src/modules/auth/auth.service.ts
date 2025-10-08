@@ -137,9 +137,6 @@ export class AuthService {
       .select("*")
       .eq("plan_id", planId)
 
-
-    console.log(pages);
-
     const { data: pagesWithPermissionByRole } = await this.supabase
       .from('role_page_relation')
       .select(`*, page (*)`)
