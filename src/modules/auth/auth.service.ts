@@ -113,6 +113,33 @@ export class AuthService {
     const user = resultUsers.data?.[0];
     const userRole = user.user_association?.[0]?.role;
 
+    const condominiumId = user.user_association?.[0]?.condominium_id;
+
+    const { data: condominiums, error } = await this.supabase
+      .from('condominium')
+      .select("*")
+      .eq('id', condominiumId);
+
+    const currentCondominium = condominiums?.[0];
+
+    const tenantId = currentCondominium?.tenant_id;
+
+    const { data: tenants } = await this.supabase
+      .from('tenant')
+      .select("*")
+      .eq('id', tenantId);
+
+    const currentTenant = tenants?.[0];
+    const planId = currentTenant?.plan_id;
+
+    const { data: pages } = await this.supabase
+      .from('plan_page')
+      .select("*")
+      .eq("plan_id", planId)
+
+
+    console.log(pages);
+
     const { data: pagesWithPermissionByRole } = await this.supabase
       .from('role_page_relation')
       .select(`*, page (*)`)
@@ -131,11 +158,13 @@ export class AuthService {
       .filter((module: any) => !!module.read)
       .map((module: any) => {
         const pagesToThisModule = pagesWithPermissionByRoleFormatted.filter((page: any) => page.pageModuleId === module.moduleId && !!page.read);
+        console.log(pagesToThisModule)
+        const pagesToThisPlan = pagesToThisModule.filter((page: any) => pages?.some(pagePlan => pagePlan.page_id === page.pageId))
         return {
           moduleId: module.moduleId,
           moduleName: module.moduleName,
           moduleRoutePath: module.moduleRoutePath,
-          modulePages: pagesToThisModule,
+          modulePages: pagesToThisPlan,
         }
       })
     const normalizedData = {
