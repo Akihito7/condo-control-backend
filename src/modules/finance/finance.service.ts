@@ -826,7 +826,6 @@ export class FinanceService {
       .from('delinquency_records')
       .select("*")
       .eq('condominium_id', condominiumId)
-      .is('payment_date', null)
       .gte('due_date', startDate)
       .lte('due_date', endDate)
 
