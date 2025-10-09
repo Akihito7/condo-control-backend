@@ -3,6 +3,8 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import * as bcrypt from "bcrypt";
 import { CreateCondominiumDTO, CreatePlanDTO, CreateTenantDTO, CreateUserDTO } from "./types/dto/backoffice.dto";
+import camelcaseKeys from "camelcase-keys";
+import { flattenObject } from "src/utils/flatten-object";
 
 
 @Injectable()
@@ -137,5 +139,38 @@ export class BackofficeService {
     if (error) {
       throw new Error(error.message);
     }
+  }
+
+  async getUsers() {
+    const { data: users, error: usersError } = await this.supabase
+      .from('user')
+      .select(`*, user_association (*)`);
+
+    if (usersError) throw new Error(usersError.message);
+
+    return camelcaseKeys(users.map(user => flattenObject({ ...user, user_association: user.user_association?.[0] })), { deep: true })
+  }
+
+  async getUserById(userId: string) {
+    const { data: users, error } = await this.supabase
+      .from('user')
+      .select(`*, user_association (*)`)
+      .eq('id', userId);
+
+    if (error) throw new Error(error.message);
+
+    const currentUser = users?.[0];
+
+    return camelcaseKeys(flattenObject({ ...currentUser, user_association: currentUser.user_association?.[0] }), { deep: true })
+  }
+
+  async getCondominiums() {
+    const { data: condominiums, error } = await this.supabase
+      .from('condominium')
+      .select('*');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(condominiums, { deep: true });
   }
 }

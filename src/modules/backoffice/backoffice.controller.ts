@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { CreateCondominiumDTO, CreatePlanDTO, CreateTenantDTO, CreateUserDTO } from "./types/dto/backoffice.dto";
 import { BackofficeService } from "./backoffice.service";
 
@@ -10,6 +10,17 @@ export class BackofficeController {
   @Post('create/user')
   async createUser(@Body() body: CreateUserDTO) {
     return this.backofficeService.createUser(body)
+  }
+
+  @Get('users')
+  async getUsers() {
+    return this.backofficeService.getUsers();
+  }
+
+
+  @Get('users/:userId')
+  async getUserById(@Param('userId') userId: string) {
+    return this.backofficeService.getUserById(userId);
   }
 
   @Post('create/plan')
@@ -25,6 +36,11 @@ export class BackofficeController {
   @Post('create/condominium')
   async createCondominium(@Body() body: CreateCondominiumDTO) {
     return this.backofficeService.createCondominium(body)
+  }
+
+  @Get('condominiums')
+  async getCondominiums() {
+    return this.backofficeService.getCondominiums();
   }
 
 
