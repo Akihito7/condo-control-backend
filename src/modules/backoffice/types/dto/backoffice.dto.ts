@@ -138,4 +138,7 @@ export class CreateUserDTO {
   @MinLength(8)
   @IsString()
   password: string
+  @IsString()
+  documentNumber: string
+
 }

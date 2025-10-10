@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put } from "@nestjs/common";
 import { CreateCondominiumDTO, CreatePlanDTO, CreateTenantDTO, CreateUserDTO } from "./types/dto/backoffice.dto";
 import { BackofficeService } from "./backoffice.service";
 
@@ -7,9 +7,23 @@ export class BackofficeController {
 
   constructor(private readonly backofficeService: BackofficeService) { }
 
-  @Post('create/user')
+  @Post('/user')
   async createUser(@Body() body: CreateUserDTO) {
     return this.backofficeService.createUser(body)
+  }
+
+  @Put('/user/:userId')
+  async updateUser(
+    @Param("userId") userId: string,
+    @Body() body: CreateUserDTO
+
+  ) {
+    return this.backofficeService.updateUser(userId, body);
+  }
+
+  @Delete("/user/:userId")
+  async deleteUser(@Param('userId') userId: string) {
+    return this.backofficeService.deleteUser(userId)
   }
 
   @Get('users')

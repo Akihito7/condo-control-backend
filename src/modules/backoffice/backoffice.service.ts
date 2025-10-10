@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import * as bcrypt from "bcrypt";
@@ -10,7 +10,9 @@ import { flattenObject } from "src/utils/flatten-object";
 @Injectable()
 export class BackofficeService {
 
-  constructor(@Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient) { }
+  constructor(
+    @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient
+  ) { }
 
   async createUser({
     condominiumId,
@@ -21,7 +23,10 @@ export class BackofficeService {
     password,
     isSuper,
     phone,
+    documentNumber
   }: CreateUserDTO) {
+
+    console.log(condominiumId, apartamentId)
 
     const emailAlreadyExists = await this.supabase
       .from('user')
@@ -35,14 +40,18 @@ export class BackofficeService {
     const passwordHashed = await bcrypt.hash(password, 8);
     const currentDate = new Date();
 
-    const { data } = await this.supabase.from('user').insert([{
-      name,
-      email,
-      is_super: isSuper,
-      phone,
-      password: passwordHashed,
-      created_at: currentDate
-    }]).select('id');
+    const { data, error } = await this.supabase.from('user')
+      .insert([{
+        name,
+        email,
+        is_super: isSuper,
+        phone,
+        cpf: documentNumber,
+        password: passwordHashed,
+        created_at: currentDate
+      }]).select('id');
+
+    if (error) throw new Error(error.message);
 
     const userId = data?.[0].id;
 
@@ -50,8 +59,8 @@ export class BackofficeService {
       const { error } = await this.supabase.from("user_association").insert([
         {
           user_id: userId,
-          apartament_id: apartamentId,
-          condominiumId: condominiumId,
+          apartment_id: apartamentId,
+          condominium_id: condominiumId,
           role: role ?? 'resident'
         }
       ])
@@ -61,6 +70,113 @@ export class BackofficeService {
       }
     };
 
+  }
+
+  async updateUser(userId: string, user: CreateUserDTO) {
+
+    const { data: users, error: errorUsers } = await this.supabase.from("user").select("*").eq('id', userId).not('is_deleted', 'is', true)
+
+    if (errorUsers) throw new Error(errorUsers.message);
+
+    const currentUser = users?.[0];
+
+    if (!currentUser) throw new NotFoundException('User Not Found');
+
+    if (currentUser.email !== user.email) {
+      const { count, error } = await this.supabase.from('user').select('*').eq('email', user.email).eq('is_deleted', false)
+
+      if (error) throw new Error(error.message);
+
+      if (count && count > 1) throw new Error('Informacoes nao atualizados por causa que o email ja esta em uso.');
+
+      await this.supabase
+        .from('user')
+        .update({
+          email: user.email
+        })
+        .eq('id', userId)
+    }
+
+    if (currentUser.cpf !== user.documentNumber) {
+      const { data, error } = await this.supabase.from('user').select('*').eq('cpf', user.documentNumber).not('is_deleted', 'is', true)
+
+      if (error) throw new Error(error.message);
+
+      if (data && data.length > 0) throw new Error('Informacoes nao atualizados por causa que o cpf ja esta em uso.');
+
+      await this.supabase
+        .from('user')
+        .update({
+          cpf: user.documentNumber
+        })
+        .eq('id', userId)
+    }
+
+    if (user.password) {
+      const isSamePassword = await bcrypt.compare(currentUser.password, user.password);
+
+      if (!isSamePassword) {
+
+        const passwordHashed = await bcrypt.hash(user.password, 8)
+        await this.supabase.from('user').update({
+          password: passwordHashed
+        }).eq('id', userId)
+      }
+
+    }
+
+    if (user.condominiumId) {
+      const { data: associations, error } = await this.supabase.from('user_association').select('*').eq('user_id', userId);
+
+      if (error) throw new Error(error.message);
+
+      const currentAssociation = associations?.[0];
+
+      if (!currentAssociation) {
+        return this.supabase
+          .from("user_association")
+          .insert({
+            user_id: userId,
+            apartment_id: user.apartamentId,
+            condominium_id: user.condominiumId,
+            role: user.role ?? 'resident'
+          }
+          )
+      }
+      if (currentAssociation.condominium_id === Number(user.condominiumId)) {
+        await this.supabase
+          .from("user_association")
+          .update({
+            apartment_id: user.apartamentId,
+            condominium_id: user.condominiumId,
+            role: user.role ?? 'resident'
+          }
+          ).eq('user_id', userId)
+
+        return;
+      }
+
+      await this.supabase.from('user_association').delete().eq('id', currentAssociation.id)
+
+      return this.supabase
+        .from("user_association")
+        .insert({
+          user_id: userId,
+          apartment_id: user.apartamentId,
+          condominium_id: user.condominiumId,
+          role: user.role ?? 'resident'
+        }
+        )
+    }
+
+  }
+
+  async deleteUser(userId: string) {
+    const { error: userError } = await this.supabase.from('user').update({
+      is_deleted: true
+    })
+      .eq("id", userId)
+    if (userError) throw new Error(userError.message);
   }
 
   async createPlan({
@@ -144,7 +260,8 @@ export class BackofficeService {
   async getUsers() {
     const { data: users, error: usersError } = await this.supabase
       .from('user')
-      .select(`*, user_association (*)`);
+      .select(`*, user_association (*)`)
+      .not('is_deleted', 'is', true)
 
     if (usersError) throw new Error(usersError.message);
 
@@ -155,7 +272,8 @@ export class BackofficeService {
     const { data: users, error } = await this.supabase
       .from('user')
       .select(`*, user_association (*)`)
-      .eq('id', userId);
+      .eq('id', userId)
+      .not('is_deleted', 'is', true)
 
     if (error) throw new Error(error.message);
 
