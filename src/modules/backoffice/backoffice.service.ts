@@ -301,4 +301,39 @@ export class BackofficeService {
 
     return camelcaseKeys(apartaments, { deep: true });
   }
+
+  async getPlans() {
+    const { data: plans, error } = await this.supabase.from('plan').select('*');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(plans, { deep: true })
+  }
+
+  async getTenants() {
+    const { data: tenants, error } = await this.supabase.from('tenant').select('*');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(tenants, { deep: true })
+  }
+
+  async getPages() {
+    const { data: pages, error } = await this.supabase.from('page').select('*');
+    if (error) throw new Error(error.message);
+    return camelcaseKeys(pages, { deep: true })
+  }
+
+  async getPlanById(planId: string) {
+    const { data: plans, error } = await this.supabase
+      .from('plan')
+      .select(`*, plan_page (*)`)
+      .eq('id', planId)
+
+    if (error) throw new Error(error.message);
+
+    const currentPlan = plans?.[0];
+
+    return camelcaseKeys(currentPlan, { deep: true })
+  }
 }

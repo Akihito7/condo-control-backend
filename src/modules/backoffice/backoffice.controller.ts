@@ -57,9 +57,31 @@ export class BackofficeController {
     return this.backofficeService.getCondominiums();
   }
 
+  @Get('plans')
+  async getPlans() {
+    return this.backofficeService.getPlans()
+  }
+
+  @Get('plans/:planId')
+  async getPlanById(@Param('planId') planId: string) {
+    return this.backofficeService.getPlanById(planId)
+  }
+
+
+
+  @Get('tenants')
+  async getTenants() {
+    return this.backofficeService.getTenants()
+  }
+
   @Get('apartaments')
   async getApartaments() {
     return this.backofficeService.getApartaments()
+  }
+
+  @Get('pages')
+  async getPages() {
+    return this.backofficeService.getPages()
   }
 
 
