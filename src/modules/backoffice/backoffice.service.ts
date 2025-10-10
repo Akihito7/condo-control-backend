@@ -173,4 +173,14 @@ export class BackofficeService {
 
     return camelcaseKeys(condominiums, { deep: true });
   }
+
+  async getApartaments() {
+    const { data: apartaments, error } = await this.supabase
+      .from("apartment")
+      .select('*');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(apartaments, { deep: true });
+  }
 }

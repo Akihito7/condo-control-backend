@@ -43,6 +43,11 @@ export class BackofficeController {
     return this.backofficeService.getCondominiums();
   }
 
+  @Get('apartaments')
+  async getApartaments() {
+    return this.backofficeService.getApartaments()
+  }
+
 
   async createModule() {
 
