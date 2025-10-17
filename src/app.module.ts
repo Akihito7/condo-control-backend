@@ -9,10 +9,8 @@ import { CommunicationModule } from './modules/communication/communication.modul
 import { IndicatorsModule } from './modules/indicators/indicators.module';
 import { SecurityModule } from './modules/security/security.module';
 import { StructureModule } from './modules/structure/structure.module';
-import { BackofficeModule } from './modules/backoffice/backoffice.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { DatabaseModule } from './modules/database/database.module';
 
 @Module({
   imports: [
@@ -24,7 +22,6 @@ import { DatabaseModule } from './modules/database/database.module';
     IndicatorsModule,
     SecurityModule,
     StructureModule,
-    BackofficeModule,
     ScheduleModule.forRoot(),
     MailerModule.forRoot({
       transport: {
@@ -40,7 +37,6 @@ import { DatabaseModule } from './modules/database/database.module';
         from: '"No Reply" <akihitodevelopment@gmail.com>',
       },
     }),
-    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
