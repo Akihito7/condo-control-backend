@@ -1,8 +1,8 @@
-import { BadRequestException, Inject, Injectable, VersioningType } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { BodyCreateEvent, BodyOpeningCalls, ParamOpeningCalls } from "./types/dto/communication.dto";
-import { differenceInMinutes, format, isBefore, isThisISOWeek } from 'date-fns';
+import { differenceInMinutes, format, isBefore } from 'date-fns';
 import camelcaseKeys from "camelcase-keys";
 import { flattenObject } from "../../utils/flatten-object"
 import { v4 } from "uuid";
@@ -10,11 +10,9 @@ import { normalizeFileName } from "src/utils/normalize-file-name";
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { AuthService } from "../auth/auth.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { id, ptBR } from "date-fns/locale";
+import { ptBR } from "date-fns/locale";
 import { MailerService } from "@nestjs-modules/mailer";
-import { min } from "class-validator";
 import { generateCode } from "src/utils/generate-code";
-import { reduce } from "rxjs";
 
 @Injectable()
 export class CommunicationService {
@@ -942,7 +940,7 @@ export class CommunicationService {
     await this.supabase.from('event').delete().eq('id', eventId)
   }
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_10_HOURS)
   async finishPoll() {
     const currentDate = new Date().toISOString();
     const { data: pollsToFinished, error } = await this.supabase

@@ -1,15 +1,15 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { SupabaseClient } from "@supabase/supabase-js";
 import camelcaseKeys from "camelcase-keys";
-import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody } from "./types/dto/finance.dto";
-import { startOfMonth, subMonths, format, differenceInMonths, isThisISOWeek, differenceInDays, addMonths, parseISO, differenceInCalendarMonths } from "date-fns"
-import { getFullMonthInterval } from "src/utils/get-full-month-interval";
-import { FinanceResponseData } from "./types/response/finance.response";
-import { AuthService } from "../auth/auth.service";
+import { addMonths, differenceInCalendarMonths, differenceInDays, format, parseISO } from "date-fns";
 import { flattenObject } from "src/utils/flatten-object";
+import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { normalizeFileName } from "src/utils/normalize-file-name";
 import { v4 } from "uuid";
+import { AuthService } from "../auth/auth.service";
+import { SUPABASE_CLIENT } from "../supabase/supabase.module";
+import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, PatchDelinquencyBodyDTO, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody } from "./types/dto/finance.dto";
+import { FinanceResponseData } from "./types/response/finance.response";
 
 
 
@@ -135,8 +135,6 @@ export class FinanceService {
   }
 
   async deleteFinanceFile(fileId: string) {
-    console.log("its me file id", fileId);
-
     const { data: files, error } = await this.supabase
       .from('attachments')
       .select('*')

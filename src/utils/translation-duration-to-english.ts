@@ -17,7 +17,7 @@ export function translateComplexDurationToEnglish(duration: string): string {
   };
 
   // Substitui " e " por espaço para unir as partes
-  const cleaned = duration.toLowerCase().replace(/ e /g, " ");
+  const cleaned = duration.toLowerCase().replace(/ e /g, ' ');
 
   // Expressão regular para capturar número + unidade
   const regex = /(\d+)\s*(\w+)/g;
@@ -27,7 +27,7 @@ export function translateComplexDurationToEnglish(duration: string): string {
 
   while ((match = regex.exec(cleaned)) !== null) {
     const quantity = match[1]; // número
-    const unitPt = match[2];   // unidade (dia, horas, etc)
+    const unitPt = match[2]; // unidade (dia, horas, etc)
     const unitEn = translations[unitPt] ?? unitPt;
     translatedParts.push(`${quantity} ${unitEn}`);
   }

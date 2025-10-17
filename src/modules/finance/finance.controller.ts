@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Param, Patch, Post, Put, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
-import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, QueryGetRegistersByCondominiumId, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody, UpdateRevenueBody, UpdateRevenueParams } from "./types/dto/finance.dto";
-import { FinanceService } from "./finance.service";
-import { Roles, RolesGuard } from "src/decorators/roles.decorator";
-import { AuthGuard } from "src/guards/auth.guard";
-import { Token } from "src/decorators/token.decorator";
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { FilesInterceptor } from "@nestjs/platform-express";
+import { Roles, RolesGuard } from "src/decorators/roles.decorator";
+import { Token } from "src/decorators/token.decorator";
+import { AuthGuard } from "src/guards/auth.guard";
+import { FinanceService } from "./finance.service";
+import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, GetRegistersByCondominiumId, PatchDelinquencyBodyDTO, QueryGetRegistersByCondominiumId, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody, UpdateRevenueBody, UpdateRevenueParams } from "./types/dto/finance.dto";
 
 @Controller('finance')
 @UseGuards(AuthGuard, RolesGuard)

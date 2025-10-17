@@ -26,8 +26,6 @@ export class BackofficeService {
     documentNumber
   }: CreateUserDTO) {
 
-    console.log(condominiumId, apartamentId)
-
     const emailAlreadyExists = await this.supabase
       .from('user')
       .select('email')

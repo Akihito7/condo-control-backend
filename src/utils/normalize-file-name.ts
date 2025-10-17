@@ -5,4 +5,4 @@ export function normalizeFileName(name: string) {
     .replace(/\s+/g, '_')
     .replace(/[^\w.-]/g, '')
     .toLowerCase();
-}                
+}
