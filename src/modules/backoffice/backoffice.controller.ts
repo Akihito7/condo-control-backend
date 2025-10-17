@@ -37,9 +37,17 @@ export class BackofficeController {
     return this.backofficeService.getUserById(userId);
   }
 
-  @Post('create/plan')
+  @Post('plans')
   async createPlan(@Body() body: CreatePlanDTO) {
     return this.backofficeService.createPlan(body)
+  }
+
+
+  @Put('plans/:planId')
+  async updatePlan(
+    @Param('planId') planId: string,
+    @Body() body: any) {
+    return this.backofficeService.updatePlan(planId, body)
   }
 
   @Post('create/tenant')
@@ -67,6 +75,10 @@ export class BackofficeController {
     return this.backofficeService.getPlanById(planId)
   }
 
+  @Get('modules')
+  async getModules() {
+    return this.backofficeService.getModules()
+  }
 
 
   @Get('tenants')

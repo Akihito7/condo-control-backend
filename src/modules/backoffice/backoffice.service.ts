@@ -186,12 +186,12 @@ export class BackofficeService {
     isCustom
   }: CreatePlanDTO) {
 
-    const { error } = await this.supabase.from("plan").insert([{
+    const { error } = await this.supabase.from("plan").insert({
       name,
       price,
       description,
       is_custom: isCustom
-    }])
+    })
 
     if (error) {
       throw new Error(error.message)
@@ -335,5 +335,68 @@ export class BackofficeService {
     const currentPlan = plans?.[0];
 
     return camelcaseKeys(currentPlan, { deep: true })
+  }
+
+  async getModules() {
+    const { data: modules, error } = await this.supabase.from('module').select('*');
+    if (error) throw new Error(error.message);
+    return camelcaseKeys(modules, { deep: true })
+  }
+
+  async updatePlan(planId: string, data: any) {
+
+    const { pages } = data;
+
+    const { data: plans, error: plansError } = await this.supabase
+      .from('plan')
+      .select(`*, plan_page (*)`)
+      .eq('id', planId);
+
+    if (plansError) throw new Error(plansError.message);
+
+
+    if (plans.length === 0) throw new Error('plan not found.');
+
+    const currentPlan = camelcaseKeys(plans?.[0]);
+    const currentPagesPlanId = currentPlan.planPage.map(page => page.page_id);
+
+    const pagesToAdd = pages.filter(page => !currentPagesPlanId.includes(page.pageId));
+
+
+    const pagesFromRequestIds = pages.map(page => page.pageId)
+    const pagesToRemove = currentPagesPlanId.filter(currentPageId => !pagesFromRequestIds.includes(currentPageId));
+
+
+    await Promise.all(pagesToAdd.map(async page => {
+      await this.supabase
+        .from('plan_page')
+        .insert({
+          plan_id: planId,
+          page_id: page.pageId,
+          created_at: new Date(),
+        })
+
+    }))
+
+
+    const { error: deletePlanPageError } = await this.supabase
+      .from('plan_page')
+      .delete()
+      .eq('plan_id', planId)
+      .in('page_id', pagesToRemove)
+
+    if (deletePlanPageError) throw new Error(deletePlanPageError.message)
+
+    const { error } = await this.supabase
+      .from('plan')
+      .update({
+        name: data.name,
+        description: data.description,
+        is_custom: data.is_custom,
+        price: data.price
+      })
+      .eq('id', planId)
+
+    if (error) throw new Error(error.message)
   }
 }
