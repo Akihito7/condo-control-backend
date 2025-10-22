@@ -11,6 +11,7 @@ import { SecurityModule } from './modules/security/security.module';
 import { StructureModule } from './modules/structure/structure.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { DatabaseModule } from './config/database/database.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
         from: '"No Reply" <akihitodevelopment@gmail.com>',
       },
     }),
+    DatabaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

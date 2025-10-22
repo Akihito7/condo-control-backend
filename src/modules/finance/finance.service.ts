@@ -10,6 +10,7 @@ import { AuthService } from "../auth/auth.service";
 import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, PatchDelinquencyBodyDTO, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody } from "./types/dto/finance.dto";
 import { FinanceResponseData } from "./types/response/finance.response";
+import { FinanceRepository } from "./finance.repository";
 
 
 
@@ -17,7 +18,8 @@ import { FinanceResponseData } from "./types/response/finance.response";
 export class FinanceService {
   constructor(
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly financeRepository: FinanceRepository
   ) { }
 
   async getFinanaceInfoByCondominium(
@@ -46,56 +48,11 @@ export class FinanceService {
       startDate,
       endDate
     } = getFullMonthInterval(selectedDate)
-    const { data: categories } = await this.supabase
-      .from('categories')
-      .select('id')
-      .in('income_expense_type_id', incomeExpenseOptions);
-    const categoryIds = categories?.map(c => c.id) ?? [];
 
+    const financesRegisters = await this.financeRepository
+      .getFinancialRecordsByCondominiumId({ condominiumId, startDate, endDate, incomeExpenseOptions });
 
-    const { data: attachments, error: attachmentsError } = await this.supabase
-      .from('attachments')
-      .select('*')
-      .eq('condominium_id', condominiumId)
-      .eq('screen_origin', 'finance')
-
-    if (attachmentsError) throw new Error(attachmentsError.message);
-
-    const { data, error } = await this.supabase.rpc('get_filtered_financial_records', {
-      p_condominium_id: condominiumId,
-      p_start_date: startDate,
-      p_end_date: endDate,
-      p_category_ids: categoryIds,
-    });
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    const normalized = data.map((record) => {
-
-      const recordAttchaments = attachments.filter(attachment => attachment.related_id === record.id);
-
-      return (
-        {
-          ...record,
-          category_name: record.categories?.name || null,
-          category_type_id: record.categories?.income_expense_type_id || null,
-          category_type_name: record.categories?.income_expense_types?.name || null,
-          payment_method_name: record.payment_methods?.name || null,
-          payment_status_name: record.payment_status?.name || null,
-          apartment_number: record.apartment?.apartment_number || null,
-          apartment_id: record.apartment?.id || null,
-          income_expense_type_id: record.categories?.income_expense_type_id || null,
-          payment_method_id: record.payment_methods?.id || null,
-          payment_status_id: record.payment_methods?.id || null,
-          record_type_id: record.categories?.record_type_id || null,
-          attachments: recordAttchaments
-        }
-      )
-    });
-
-    return camelcaseKeys(normalized, { deep: true })
+    return camelcaseKeys(financesRegisters, { deep: true })
   }
 
   async uploadFinanceFiles(body, attachamnets) {
