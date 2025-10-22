@@ -25,9 +25,9 @@ export class FinanceRepository {
               fr.delinquency_record_id,
               fr.apartament_id,
               a.apartment_number,
-              ps.name,
-              pm.name,
-              c.name,
+              ps.name as payment_status_name,
+              pm.name as payment_method_name,
+              c.name as category_name,
               iet.name,
               COALESCE(fr.payment_date, fr.due_date) as effective_date,
               COALESCE(
