@@ -4,12 +4,12 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { AuthService } from "../auth/auth.service";
 import * as bcrypt from "bcrypt"
 import camelcaseKeys from "camelcase-keys";
-import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes, addMonths } from 'date-fns';
+import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes, addMonths, differenceInYears } from 'date-fns';
 import { bn, id, ptBR } from 'date-fns/locale';
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { flattenObject } from "src/utils/flatten-object";
 import { FinanceService } from "../finance/finance.service";
-import { BodyAsset, CreateEmployeeBody, EventSpace, InterventionBody, InterventionPayment, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
+import { BodyAsset, CreateEmployeeBody, CreateMaintenanceManagementAssetDTO, EventSpace, InterventionBody, InterventionPayment, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
 import { translateComplexDurationToEnglish } from "src/utils/translation-duration-to-english";
 import { normalizeFileName } from "src/utils/normalize-file-name";
 import { v4 } from "uuid";
@@ -1741,5 +1741,137 @@ export class StructureService {
     }))
 
     return dataFormatted;
+  }
+
+  async createMaintenanceManagementAssetsType({ token, data }: { token: string, data: { name: string } }) {
+    const { userId } = await this.authService.decodeToken(token);
+    const {
+      condominiumId
+    } = await this.authService.me(userId);
+
+    if (!condominiumId) {
+      throw new Error('Nenhum condominio encontrado para esse usuario.')
+    }
+
+    const {
+      name
+    } = data;
+
+    const { data: types, error } = await this.supabase
+      .from('assets_maintenance_types')
+      .insert({
+        condominium_id: condominiumId,
+        name
+      })
+      .select('*')
+
+    if (error) throw new Error("Erro ao cadastrar tipo.");
+
+    return camelcaseKeys(types?.[0]);
+  }
+
+  async getMaintenanceManagementAssetsTypes(token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data, error } = await this.supabase
+      .from('assets_maintenance_types')
+      .select('*')
+      .eq('condominium_id', condominiumId);
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data, { deep: true })
+  }
+
+  async createMaintenanceManagementAsset
+    ({ token, data, attachments }: { token: string, data: CreateMaintenanceManagementAssetDTO, attachments: any[] }) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { name, code, frequency, installationDate, lifespan, supplier, type, contact } = data;
+
+    const estimatedUsefulLife = `${lifespan} year`
+
+    const { data: assets, error } = await this.supabase
+      .from('assets_maintenance')
+      .insert({
+        condominium_id: condominiumId,
+        name,
+        type,
+        contact,
+        supplier,
+        installation_date: new Date(installationDate).toISOString(),
+        estimated_useful_life: estimatedUsefulLife,
+        maintenance_frequency: frequency,
+        code
+      })
+      .select('*')
+
+    if (error) throw new Error(error.message);
+
+    const currentAsset = assets?.[0];
+
+    const promisesDocuments = attachments.map(async document => {
+      const fileName = normalizeFileName(document.originalname);
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const { data: fileData, error } = await this.supabase.storage
+        .from('condo')
+        .upload(`uploads/${uniqueFileName}`, document.buffer);
+
+      if (error) throw new Error(error.message);
+
+      const { id, fullPath } = fileData;
+
+      const { data: attachamentsInserted, error: insertFileError } = await this.supabase
+        .from('attachments')
+        .insert({
+          related_type: 'maintenance-management',
+          related_id: currentAsset?.id,
+          condominium_id: condominiumId,
+          date: format(new Date(), 'yyyy-MM-dd'),
+          path: fullPath,
+          bucket_name: 'condo',
+          original_name: fileName,
+          screen_origin: 'maintenance-management',
+          created_at: new Date(),
+          supabase_id: id,
+        })
+        .select('*')
+    })
+
+    await Promise.all(promisesDocuments)
+  }
+
+  async getMaintenanceManagementAssets(token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data, error } = await this.supabase
+      .from('assets_maintenance')
+      .select('*')
+      .eq('condominium_id', condominiumId);
+
+    if (error) throw new Error(error.message);
+
+    const dataFormatted = data?.map(asset => {
+
+      const installationDate = new Date(asset.installation_date)
+
+      const differenceInYearsNumber = differenceInYears(new Date, installationDate);
+
+      const estimatedUsefulLife = Number(asset.estimated_useful_life?.split(' ')?.[0]);
+
+      const remainingUsefulLifeNumber = estimatedUsefulLife - differenceInYearsNumber
+
+      const remainingUsefulLife = remainingUsefulLifeNumber > 1 ? `${remainingUsefulLifeNumber} anos` : `${remainingUsefulLifeNumber} ano`
+
+      return {
+        ...asset,
+        remainingUsefulLife
+      }
+    })
+
+    return camelcaseKeys(dataFormatted, { deep: true })
   }
 }

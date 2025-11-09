@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Uploa
 import { Token } from "src/decorators/token.decorator";
 import { AuthGuard } from "src/guards/auth.guard";
 import { StructureService } from "./structure.service";
-import { BodyAsset, CreateEmployeeBody, InterventionBody, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
+import { BodyAsset, CreateEmployeeBody, CreateMaintenanceManagementAssetDTO, InterventionBody, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
 import { FilesInterceptor } from "@nestjs/platform-express";
 import { throws } from "assert";
 
@@ -295,6 +295,37 @@ export class StructureController {
   @Get('maintenance-backlog/options/area-availability/:areaId')
   async getAreaAvailabilityOptions(@Param('areaId') areaId: string) {
     return this.structureService.getAreaAvailabilityOptions({ areaId })
+  }
+
+  @Get('maintenance-management/assets/types')
+  async getMaintenanceManagementAssetsTypes(
+    @Token() token: string,
+  ) {
+    return this.structureService.getMaintenanceManagementAssetsTypes(token)
+  }
+
+  @Post('maintenance-management/assets/types/create')
+  async createMaintenanceManagementAssetsType(
+    @Token() token: string,
+    @Body() body: { name: string }) {
+    return this.structureService.createMaintenanceManagementAssetsType({ token, data: body })
+  }
+
+  @Post('maintenance-management/assets/create')
+  @UseInterceptors(FilesInterceptor('attachment'))
+  async createMaintenanceManagementAsset(
+    @UploadedFiles() attachments: any,
+    @Token() token: string,
+    @Body() body: CreateMaintenanceManagementAssetDTO) {
+    return this.structureService.createMaintenanceManagementAsset({ token, data: body, attachments })
+  }
+
+  @Get('maintenance-management/assets')
+  @UseInterceptors(FilesInterceptor('attachment'))
+  async getMaintenanceManagementAssets(
+    @Token() token: string,
+  ) {
+    return this.structureService.getMaintenanceManagementAssets(token)
   }
 
 }

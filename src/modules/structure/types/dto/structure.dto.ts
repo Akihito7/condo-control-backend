@@ -98,3 +98,14 @@ export type BodyAsset = {
   categoryId: string
 
 }
+
+export type CreateMaintenanceManagementAssetDTO = {
+  code: string;
+  frequency: string;
+  installationDate: Date;
+  lifespan: number;
+  name: string;
+  supplier: string;
+  type: string;
+  contact : string;
+}
