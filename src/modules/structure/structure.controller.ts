@@ -328,4 +328,13 @@ export class StructureController {
     return this.structureService.getMaintenanceManagementAssets(token)
   }
 
+  @Get('maintenances')
+  async getMaintenancesManagement(
+    @Param('date') date: string,
+    @Token() token: string
+  ) {
+    return this.structureService.getMaintenancesManagement(token);
+  }
+
+
 }

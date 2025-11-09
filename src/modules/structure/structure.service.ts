@@ -692,6 +692,8 @@ export class StructureService {
   async createMaintenance(condominiumId: string, token: string, data: InterventionBody) {
     const { userId } = await this.authService.decodeToken(token);
 
+    console.log(data)
+
     const paymentMethodFormatted = data.paymentMethod ? data.paymentMethod : null;
 
     const { data: insertedMaintenances, error } = await this.supabase
@@ -716,6 +718,10 @@ export class StructureService {
         actual_end: data.actualEnd,
         number_of_installments: data.numberOfInstallments,
         is_installment: data.isInstallment,
+        contact: data.contact,
+        type_maintenance: data.typeMaintenance,
+        asset_maintenance_id: data.assetType
+
       })
       .select('id');
 
@@ -1873,5 +1879,25 @@ export class StructureService {
     })
 
     return camelcaseKeys(dataFormatted, { deep: true })
+  }
+
+  async getMaintenancesManagement(token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data, error } = await this.supabase
+      .from("maintenances")
+      .select(`
+        *,
+        assets_maintenance (*)
+        `)
+      .eq('condominium_id', condominiumId)
+      .eq('type_id', 2)
+      .not('asset_maintenance_id', 'is', null)
+
+    if (error) throw new Error(error.message);
+
+
+    return camelcaseKeys(data.map(maintenance => flattenObject(maintenance)));
   }
 }

@@ -49,7 +49,10 @@ export interface InterventionBody {
   actualEnd?: Date | null;         // opcional, nullable
   status: string;                  // obrigatório
   isInstallment: true,
-  numberOfInstallments: 2
+  numberOfInstallments: number;
+  contact?: string
+  typeMaintenance?: string;
+  assetType?: string;
 }
 
 
@@ -107,5 +110,5 @@ export type CreateMaintenanceManagementAssetDTO = {
   name: string;
   supplier: string;
   type: string;
-  contact : string;
+  contact: string;
 }
