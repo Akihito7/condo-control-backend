@@ -112,7 +112,6 @@ export class AuthService {
 
     const user = resultUsers.data?.[0];
     const userRole = user.user_association?.[0]?.role;
-    console.log(user)
 
     if (!user.is_super) {
       const condominiumId = user.user_association?.[0]?.condominium_id;

@@ -1881,9 +1881,13 @@ export class StructureService {
     return camelcaseKeys(dataFormatted, { deep: true })
   }
 
-  async getMaintenancesManagement(token: string) {
+  async getMaintenancesManagement(token: string, date: string) {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
+    const {
+      startDate,
+      endDate
+    } = getFullMonthInterval(date);
 
     const { data, error } = await this.supabase
       .from("maintenances")
@@ -1894,10 +1898,62 @@ export class StructureService {
       .eq('condominium_id', condominiumId)
       .eq('type_id', 2)
       .not('asset_maintenance_id', 'is', null)
+      .gte('planned_start', startDate)
+      .lte('planned_start', endDate)
 
     if (error) throw new Error(error.message);
 
-
     return camelcaseKeys(data.map(maintenance => flattenObject(maintenance)));
+  }
+
+  async getCalendarMaintenances(token: string, date: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const {
+      startDate,
+      endDate
+    } = getFullMonthInterval(date);
+
+    const { data, error } = await this.supabase
+      .from("maintenances")
+      .select(`
+        *,
+        assets_maintenance (*)
+        `)
+      .eq('condominium_id', condominiumId)
+      .eq('type_id', 2)
+      .not('asset_maintenance_id', 'is', null)
+      .gte('planned_start', startDate)
+      .lte('planned_start', endDate)
+
+    if (error) throw new Error(error.message);
+
+    const maintenanceEvents: { date: string; dayName: string; dayEvents: any[]; }[] = [];
+
+    const [year, month, day] = endDate.split('-');
+
+    for (let index = 0; index < Number(day); index++) {
+      const currentDate = `${year}/${month}/${String(index + 1).padStart(2, '0')}`
+
+      const eventsForCurrentDate = data.filter(maintenance => {
+        const plannedStart = maintenance.planned_start;
+        if (!plannedStart) return false;
+        const plannedStartFormatted = format(plannedStart, 'yyyy/MM/dd');
+        return plannedStartFormatted === currentDate;
+      });
+
+      const dayName = format(new Date(currentDate), 'EEEE', { locale: ptBR })
+
+      const dayEventDetails = {
+        date: currentDate,
+        dayName,
+        dayEvents: camelcaseKeys(eventsForCurrentDate, { deep: true })
+      };
+
+      maintenanceEvents.push(dayEventDetails);
+    }
+
+    return maintenanceEvents;
   }
 }
