@@ -321,11 +321,40 @@ export class StructureController {
   }
 
   @Get('maintenance-management/assets')
-  @UseInterceptors(FilesInterceptor('attachment'))
   async getMaintenanceManagementAssets(
     @Token() token: string,
   ) {
     return this.structureService.getMaintenanceManagementAssets(token)
+  }
+
+  @Put('maintenance-management/assets/:id')
+  async deleteMaintenanceManagementAssets(
+    @Param('id') assetId: string
+  ) {
+    return this.structureService.deleteMaintenanceManagementAssets(assetId)
+  }
+
+  @Get('maintenance-management/assets/attchaments/:assetId')
+  async getMaintenanceManagementAssetsAttachments(
+    @Param("assetId") assetId: string,
+  ) {
+    return this.structureService.getMaintenanceManagementAssetsAttachments(assetId)
+  }
+
+  @Delete('maintenance-management/assets/attchaments/:attchamentId')
+  async deleteMaintenanceManagementAssetsAttachments(
+    @Param("attchamentId") attchamentId: string,
+  ) {
+    return this.structureService.deleteMaintenanceManagementAssetsAttachments(attchamentId)
+  }
+
+  @Post('maintenance-management/assets/attchaments')
+  @UseInterceptors(FilesInterceptor('attachment'))
+  async addMaintenanceManagementAssetsAttachments(
+    @UploadedFiles() attachments: any,
+    @Body() body: any
+  ) {
+    return this.structureService.addMaintenanceManagementAssetsAttachments(attachments, body)
   }
 
   @Get('maintenances/:date')
