@@ -692,12 +692,38 @@ export class StructureService {
   async createMaintenance(condominiumId: string, token: string, data: InterventionBody, attachments?: any[]) {
     const { userId } = await this.authService.decodeToken(token);
 
+    const hasNextMaintenance = !!data.nextMaintenance;
 
     const paymentMethodFormatted = data.paymentMethod ? data.paymentMethod : null;
 
-    const { data: insertedMaintenances, error } = await this.supabase
-      .from('maintenances')
-      .insert({
+    const registersToCreate = [{
+      priority_id: data.priority,
+      type_id: data.type,
+      description: data.description,
+      supplier: data.provider,
+      amount: data.value ? Number(data.value) : 0,
+      payment_method: paymentMethodFormatted,
+      payment_date: data.paymentDate,
+      payment_completion_date: data.paymentCompletionDate,
+      condominium_area_id: data.area,
+      status_id: data.status,
+      created_at: new Date(),
+      created_by_id: userId,
+      condominium_id: condominiumId,
+      planned_start: data.plannedStart,
+      planned_end: data.plannedEnd,
+      actual_start: data.actualStart,
+      actual_end: data.actualEnd,
+      number_of_installments: data.numberOfInstallments,
+      is_installment: data.isInstallment,
+      contact: data.contact,
+      type_maintenance: data.typeMaintenance,
+      asset_maintenance_id: data.assetType
+
+    }]
+
+    if (hasNextMaintenance) {
+      registersToCreate.push({
         priority_id: data.priority,
         type_id: data.type,
         description: data.description,
@@ -711,7 +737,7 @@ export class StructureService {
         created_at: new Date(),
         created_by_id: userId,
         condominium_id: condominiumId,
-        planned_start: data.plannedStart,
+        planned_start: data.nextMaintenance,
         planned_end: data.plannedEnd,
         actual_start: data.actualStart,
         actual_end: data.actualEnd,
@@ -720,8 +746,12 @@ export class StructureService {
         contact: data.contact,
         type_maintenance: data.typeMaintenance,
         asset_maintenance_id: data.assetType
-
       })
+    }
+
+    const { data: insertedMaintenances, error } = await this.supabase
+      .from('maintenances')
+      .insert(registersToCreate)
       .select('id');
 
     if (error) throw new Error(error.message);

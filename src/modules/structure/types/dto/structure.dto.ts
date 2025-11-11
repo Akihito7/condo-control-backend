@@ -53,6 +53,7 @@ export interface InterventionBody {
   contact?: string
   typeMaintenance?: string;
   assetType?: string;
+  nextMaintenance?: Date | null
 }
 
 
