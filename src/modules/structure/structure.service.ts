@@ -689,10 +689,9 @@ export class StructureService {
   }
 
 
-  async createMaintenance(condominiumId: string, token: string, data: InterventionBody) {
+  async createMaintenance(condominiumId: string, token: string, data: InterventionBody, attachments?: any[]) {
     const { userId } = await this.authService.decodeToken(token);
 
-    console.log(data)
 
     const paymentMethodFormatted = data.paymentMethod ? data.paymentMethod : null;
 
@@ -758,6 +757,36 @@ export class StructureService {
 
       if (paymentsError) throw new Error(paymentsError.message);
     }
+
+    const promisesDocuments = attachments?.map(async document => {
+      const fileName = normalizeFileName(document.originalname);
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const { data: fileData, error } = await this.supabase.storage
+        .from('condo')
+        .upload(`uploads/${uniqueFileName}`, document.buffer);
+
+      if (error) throw new Error(error.message);
+
+      const { id, fullPath } = fileData;
+
+      const { data: attachamentsInserted, error: insertFileError } = await this.supabase
+        .from('attachments')
+        .insert({
+          related_type: 'maintenances',
+          related_id: maintenanceId,
+          condominium_id: condominiumId,
+          date: format(new Date(), 'yyyy-MM-dd'),
+          path: fullPath,
+          bucket_name: 'condo',
+          original_name: fileName,
+          screen_origin: 'maintenance-management',
+          created_at: new Date(),
+          supabase_id: id,
+        })
+        .select('*')
+    })
+
+    await Promise.all(promisesDocuments ?? [])
     return { maintenanceId };
   }
 
@@ -1967,9 +1996,26 @@ export class StructureService {
     return camelcaseKeys(data, { deep: true })
   }
 
-  async deleteMaintenanceManagementAssetsAttachments(attchamentId: string) {
-    console.log("its me id", attchamentId)
+  async getMaintenanceManagementAttachments(maintenanceId: string) {
+    const { data, error } = await this.supabase.from('attachments')
+      .select('*')
+      .eq('related_type', 'maintenances')
+      .eq('related_id', maintenanceId);
 
+    if (error) throw new Error(error.message);
+    return camelcaseKeys(data, { deep: true })
+  }
+
+  async deleteMaintenanceManagementAssetsAttachments(attchamentId: string) {
+    const { error } = await this.supabase
+      .from('attachments')
+      .delete()
+      .eq('id', attchamentId)
+
+    if (error) throw new Error(error.message)
+  }
+
+  async deleteMaintenanceManagementAttachments(attchamentId: string) {
     const { error } = await this.supabase
       .from('attachments')
       .delete()
@@ -2012,6 +2058,43 @@ export class StructureService {
 
     return camelcaseKeys(newAttachamnets, { deep: true });
   }
+
+  async addMaintenanceManagementAttachments(attachments, data) {
+    const { maintenanceId, condominiumId } = data;
+
+    const newAttachamnets = await Promise.all(attachments.map(async attachment => {
+      const fileName = normalizeFileName(attachment.originalname);
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const { data: fileData, error } = await this.supabase.storage
+        .from('condo')
+        .upload(`uploads/${uniqueFileName}`, attachment.buffer);
+
+      if (error) console.log('FINANCE UPLOAD FILES ERROR : ', error.message);
+
+      const { data: attachamentsInserted, error: insertFileError } = await this.supabase
+        .from('attachments')
+        .insert({
+          related_type: 'maintenances',
+          related_id: maintenanceId,
+          condominium_id: condominiumId,
+          date: format(new Date(), 'yyyy-MM-dd'),
+          path: fileData?.fullPath,
+          bucket_name: 'condo',
+          original_name: attachment.originalname,
+          screen_origin: 'maintenance-management',
+          created_at: new Date(),
+          supabase_id: fileData?.id,
+        })
+        .select('*')
+
+      if (insertFileError) console.log(insertFileError.message)
+
+      return attachamentsInserted?.[0]
+    }))
+
+    return camelcaseKeys(newAttachamnets, { deep: true });
+  }
+
 
   async deleteMaintenanceManagementAssets(assetId: string) {
     await this.supabase

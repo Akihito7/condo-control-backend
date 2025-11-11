@@ -129,12 +129,14 @@ export class StructureController {
   }
 
   @Post('maintenance-backlog/create/:condominiumId')
+  @UseInterceptors(FilesInterceptor('attachment'))
   async createMaintenance(
     @Param("condominiumId") condominiumId: string,
     @Token() token: string,
-    @Body() body: InterventionBody
+    @Body() body: InterventionBody,
+    @UploadedFiles() attachments: any,
   ) {
-    return this.structureService.createMaintenance(condominiumId, token, body)
+    return this.structureService.createMaintenance(condominiumId, token, body, attachments)
   }
 
   @Put('maintenance-backlog/update/:id')
@@ -341,12 +343,27 @@ export class StructureController {
     return this.structureService.getMaintenanceManagementAssetsAttachments(assetId)
   }
 
+  @Get('maintenance-management/attchaments/:maintenanceId')
+  async getMaintenanceManagementAttachments(
+    @Param("maintenanceId") maintenanceId: string,
+  ) {
+    return this.structureService.getMaintenanceManagementAttachments(maintenanceId)
+  }
+
   @Delete('maintenance-management/assets/attchaments/:attchamentId')
   async deleteMaintenanceManagementAssetsAttachments(
     @Param("attchamentId") attchamentId: string,
   ) {
     return this.structureService.deleteMaintenanceManagementAssetsAttachments(attchamentId)
   }
+
+  @Delete('maintenance-management/attchaments/:attchamentId')
+  async deleteMaintenanceManagementAttachments(
+    @Param("attchamentId") attchamentId: string,
+  ) {
+    return this.structureService.deleteMaintenanceManagementAttachments(attchamentId)
+  }
+
 
   @Post('maintenance-management/assets/attchaments')
   @UseInterceptors(FilesInterceptor('attachment'))
@@ -355,6 +372,15 @@ export class StructureController {
     @Body() body: any
   ) {
     return this.structureService.addMaintenanceManagementAssetsAttachments(attachments, body)
+  }
+
+  @Post('maintenance-management/attchaments')
+  @UseInterceptors(FilesInterceptor('attachment'))
+  async addMaintenanceManagementAttachments(
+    @UploadedFiles() attachments: any,
+    @Body() body: any
+  ) {
+    return this.structureService.addMaintenanceManagementAttachments(attachments, body)
   }
 
   @Get('maintenances/:date')
