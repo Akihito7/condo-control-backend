@@ -2146,7 +2146,7 @@ export class StructureService {
 
     const { data: maintenances, error: maintenanacesError } = await this.supabase
       .from('maintenances')
-      .select('*')
+      .select('*, assets_maintenance (*)')
       .eq('condominium_id', condominiumId)
       .gte('planned_start', startDate.toISOString())
       .lte('planned_start', endDate.toISOString())
@@ -2156,6 +2156,8 @@ export class StructureService {
 
     return this.buildMaintenancesDashboardData(maintenances)
   }
+
+
 
   buildMaintenancesDashboardData(maintenances: any[]) {
     if (!maintenances?.length) {
@@ -2170,18 +2172,19 @@ export class StructureService {
         charts: {
           monthlyCosts: [],
           maintenanceTypes: [],
+          topAssets: [],
         },
       };
     }
 
-    const preventives = maintenances.filter(m => m.type_maintenance === "1");
-    const correctives = maintenances.filter(m => m.type_maintenance === "2");
+    const preventives = maintenances.filter((m) => m.type_maintenance === "1");
+    const correctives = maintenances.filter((m) => m.type_maintenance === "2");
 
     const total = maintenances.length;
     const totalAmount = maintenances.reduce((sum, m) => sum + (m.amount || 0), 0);
     const averageAmount = total ? totalAmount / total : 0;
 
-    // Agrupar custo mensal
+    // 📊 Agrupar custo mensal (por planned_start)
     const monthlyMap: Record<string, number> = {};
     for (const m of maintenances) {
       if (!m.planned_start) continue;
@@ -2194,11 +2197,29 @@ export class StructureService {
       amount,
     }));
 
-    // Gráfico de preventivas vs corretivas
+    // 🧩 Gráfico de preventivas vs corretivas
     const maintenanceTypes = [
       { type: "Preventiva", count: preventives.length },
       { type: "Corretiva", count: correctives.length },
     ];
+
+    // 🏭 Gráfico de ativos com mais manutenções
+    const assetCountMap: Record<string, { name: string; count: number }> = {};
+
+    for (const m of maintenances) {
+      const asset = m.assets_maintenance;
+      if (!asset) continue;
+
+      const assetName = asset.name || "Desconhecido";
+      if (!assetCountMap[assetName]) {
+        assetCountMap[assetName] = { name: assetName, count: 0 };
+      }
+      assetCountMap[assetName].count++;
+    }
+
+    const topAssets = Object.values(assetCountMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5); // Top 5 ativos
 
     return {
       cards: {
@@ -2211,8 +2232,8 @@ export class StructureService {
       charts: {
         monthlyCosts,
         maintenanceTypes,
+        topAssets,
       },
     };
   }
-
 }
