@@ -398,4 +398,12 @@ export class StructureController {
   ) {
     return this.structureService.getCalendarMaintenances(token, date);
   }
+
+  @Get('maintenances/summary/:year')
+  async getMaintenancesSummary(
+    @Param('year') year: string,
+    @Token() token: string,
+  ) {
+    return this.structureService.getMaintenancesSummary(token, year)
+  }
 }

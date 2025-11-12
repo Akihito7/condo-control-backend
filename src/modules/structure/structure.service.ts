@@ -4,7 +4,7 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { AuthService } from "../auth/auth.service";
 import * as bcrypt from "bcrypt"
 import camelcaseKeys from "camelcase-keys";
-import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes, addMonths, differenceInYears } from 'date-fns';
+import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes, addMonths, differenceInYears, startOfYear, endOfYear } from 'date-fns';
 import { bn, id, ptBR } from 'date-fns/locale';
 import { getFullMonthInterval } from "src/utils/get-full-month-interval";
 import { flattenObject } from "src/utils/flatten-object";
@@ -2135,4 +2135,84 @@ export class StructureService {
       })
       .eq('id', assetId)
   }
+
+  async getMaintenancesSummary(token: string, year: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const numericYear = Number(year);
+    const startDate = startOfYear(new Date(numericYear, 0, 1));
+    const endDate = endOfYear(new Date(numericYear, 0, 1));
+
+    const { data: maintenances, error: maintenanacesError } = await this.supabase
+      .from('maintenances')
+      .select('*')
+      .eq('condominium_id', condominiumId)
+      .gte('planned_start', startDate.toISOString())
+      .lte('planned_start', endDate.toISOString())
+      .eq('type_id', 1)
+
+    if (maintenanacesError) throw new Error(maintenanacesError.message);
+
+    return this.buildMaintenancesDashboardData(maintenances)
+  }
+
+  buildMaintenancesDashboardData(maintenances: any[]) {
+    if (!maintenances?.length) {
+      return {
+        cards: {
+          total: 0,
+          preventives: 0,
+          correctives: 0,
+          totalAmount: 0,
+          averageAmount: 0,
+        },
+        charts: {
+          monthlyCosts: [],
+          maintenanceTypes: [],
+        },
+      };
+    }
+
+    const preventives = maintenances.filter(m => m.type_maintenance === "1");
+    const correctives = maintenances.filter(m => m.type_maintenance === "2");
+
+    const total = maintenances.length;
+    const totalAmount = maintenances.reduce((sum, m) => sum + (m.amount || 0), 0);
+    const averageAmount = total ? totalAmount / total : 0;
+
+    // Agrupar custo mensal
+    const monthlyMap: Record<string, number> = {};
+    for (const m of maintenances) {
+      if (!m.planned_start) continue;
+      const month = format(new Date(m.planned_start), "MMM");
+      monthlyMap[month] = (monthlyMap[month] || 0) + (m.amount || 0);
+    }
+
+    const monthlyCosts = Object.entries(monthlyMap).map(([month, amount]) => ({
+      month,
+      amount,
+    }));
+
+    // Gráfico de preventivas vs corretivas
+    const maintenanceTypes = [
+      { type: "Preventiva", count: preventives.length },
+      { type: "Corretiva", count: correctives.length },
+    ];
+
+    return {
+      cards: {
+        total,
+        preventives: preventives.length,
+        correctives: correctives.length,
+        totalAmount,
+        averageAmount,
+      },
+      charts: {
+        monthlyCosts,
+        maintenanceTypes,
+      },
+    };
+  }
+
 }
