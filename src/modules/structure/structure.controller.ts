@@ -148,6 +148,7 @@ export class StructureController {
     return this.structureService.updateMaintenance(token, body, maintenanceId)
   }
 
+
   @Delete('maintenance-backlog/delete/:id')
   async deleteMaintenance(
     @Param('id') maintenanceId: string

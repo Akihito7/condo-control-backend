@@ -720,36 +720,35 @@ export class StructureService {
       contact: data.contact,
       type_maintenance: data.typeMaintenance,
       asset_maintenance_id: data.assetType
-
     }]
 
-    if (hasNextMaintenance) {
-      registersToCreate.push({
-        priority_id: data.priority,
-        type_id: data.type,
-        description: data.description,
-        supplier: data.provider,
-        amount: data.value ? Number(data.value) : 0,
-        payment_method: paymentMethodFormatted,
-        payment_date: data.paymentDate,
-        payment_completion_date: data.paymentCompletionDate,
-        condominium_area_id: data.area,
-        status_id: data.status,
-        created_at: new Date(),
-        created_by_id: userId,
-        condominium_id: condominiumId,
-        planned_start: data.nextMaintenance,
-        planned_end: data.plannedEnd,
-        actual_start: data.actualStart,
-        actual_end: data.actualEnd,
-        number_of_installments: data.numberOfInstallments,
-        is_installment: data.isInstallment,
-        contact: data.contact,
-        type_maintenance: data.typeMaintenance,
-        asset_maintenance_id: data.assetType
-      })
-    }
-
+    /*     if (hasNextMaintenance) {
+          registersToCreate.push({
+            priority_id: data.priority,
+            type_id: data.type,
+            description: data.description,
+            supplier: data.provider,
+            amount: data.value ? Number(data.value) : 0,
+            payment_method: paymentMethodFormatted,
+            payment_date: data.paymentDate,
+            payment_completion_date: data.paymentCompletionDate,
+            condominium_area_id: data.area,
+            status_id: '3',
+            created_at: new Date(),
+            created_by_id: userId,
+            condominium_id: condominiumId,
+            planned_start: data.nextMaintenance,
+            planned_end: data.plannedEnd,
+            actual_start: data.actualStart,
+            actual_end: data.actualEnd,
+            number_of_installments: data.numberOfInstallments,
+            is_installment: data.isInstallment,
+            contact: data.contact,
+            type_maintenance: data.typeMaintenance,
+            asset_maintenance_id: data.assetType
+          })
+        }
+     */
     const { data: insertedMaintenances, error } = await this.supabase
       .from('maintenances')
       .insert(registersToCreate)
@@ -864,6 +863,36 @@ export class StructureService {
 
     const currentMaintenance = maintenances?.[0];
 
+    const alreadyHasNextMaintenance = currentMaintenance.next_maintenance;
+    const isMaintenance = Number(data.type) === 1;
+    const isPreventiveMaintenance = Number(data.typeMaintenance) === 1;
+    const currentHasNextMaintenace = data.nextMaintenance;
+
+    if (!alreadyHasNextMaintenance) {
+      if (isMaintenance && isPreventiveMaintenance && Number(data.status) === 5) {
+        const objectToCreate = currentMaintenance;
+        delete objectToCreate.id;
+        const { data: nextMaintenances, error } = await this.supabase
+          .from("maintenances")
+          .insert({
+            ...objectToCreate,
+            status_id: 3,
+            planned_start: currentHasNextMaintenace,
+          })
+          .select('*')
+
+        const currentNextMaintenanceId = nextMaintenances?.[0]?.id
+
+        await this.supabase
+          .from('maintenances')
+          .update({
+            next_maintenance: currentNextMaintenanceId
+          })
+          .eq('id', maintenanceId)
+      }
+
+    }
+
     const alreadyInstallment = currentMaintenance.is_installment;
 
     const keepInstallment = alreadyInstallment && data.isInstallment;
@@ -946,6 +975,21 @@ export class StructureService {
   }
 
   async deleteMaintenance(maintenanceId: string) {
+
+    const { data: maintenances } = await this.supabase
+      .from('maintenances')
+      .select('*')
+      .eq('next_maintenance', maintenanceId);
+
+    console.log(maintenances)
+    const maintenancesIdToRemoveNextMaintenance = maintenances?.map((maintenance) => maintenance.id) as Number[];
+
+
+    await this.supabase.from('maintenances').update({
+      next_maintenance: null
+    })
+      .in('id', maintenancesIdToRemoveNextMaintenance)
+
     const { error } = await this.supabase
       .from('maintenances')
       .delete()
