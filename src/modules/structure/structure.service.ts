@@ -667,7 +667,8 @@ export class StructureService {
       condominium_areas (*),
       maintenance_payments(*)
     `)
-      .eq('condominium_id', condominiumId);
+      .eq('condominium_id', condominiumId)
+      .eq('type_id', 2)
 
     if (maintenancesError) {
       throw new Error(maintenancesError.message);
@@ -1956,7 +1957,7 @@ export class StructureService {
         assets_maintenance (*)
         `)
       .eq('condominium_id', condominiumId)
-      .eq('type_id', 2)
+      .eq('type_id', 1)
       .not('asset_maintenance_id', 'is', null)
       .gte('planned_start', startDate)
       .lte('planned_start', endDate)
@@ -1982,7 +1983,7 @@ export class StructureService {
         assets_maintenance (*)
         `)
       .eq('condominium_id', condominiumId)
-      .eq('type_id', 2)
+      .eq('type_id', 1)
       .not('asset_maintenance_id', 'is', null)
       .gte('planned_start', startDate)
       .lte('planned_start', endDate)
