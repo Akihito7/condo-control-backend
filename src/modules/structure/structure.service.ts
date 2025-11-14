@@ -693,8 +693,6 @@ export class StructureService {
   async createMaintenance(condominiumId: string, token: string, data: InterventionBody, attachments?: any[]) {
     const { userId } = await this.authService.decodeToken(token);
 
-    const hasNextMaintenance = !!data.nextMaintenance;
-
     const paymentMethodFormatted = data.paymentMethod ? data.paymentMethod : null;
 
     const registersToCreate = [{
@@ -722,33 +720,6 @@ export class StructureService {
       asset_maintenance_id: data.assetType
     }]
 
-    /*     if (hasNextMaintenance) {
-          registersToCreate.push({
-            priority_id: data.priority,
-            type_id: data.type,
-            description: data.description,
-            supplier: data.provider,
-            amount: data.value ? Number(data.value) : 0,
-            payment_method: paymentMethodFormatted,
-            payment_date: data.paymentDate,
-            payment_completion_date: data.paymentCompletionDate,
-            condominium_area_id: data.area,
-            status_id: '3',
-            created_at: new Date(),
-            created_by_id: userId,
-            condominium_id: condominiumId,
-            planned_start: data.nextMaintenance,
-            planned_end: data.plannedEnd,
-            actual_start: data.actualStart,
-            actual_end: data.actualEnd,
-            number_of_installments: data.numberOfInstallments,
-            is_installment: data.isInstallment,
-            contact: data.contact,
-            type_maintenance: data.typeMaintenance,
-            asset_maintenance_id: data.assetType
-          })
-        }
-     */
     const { data: insertedMaintenances, error } = await this.supabase
       .from('maintenances')
       .insert(registersToCreate)
@@ -868,6 +839,8 @@ export class StructureService {
     const isPreventiveMaintenance = Number(data.typeMaintenance) === 1;
     const currentHasNextMaintenace = data.nextMaintenance;
 
+
+    console.log(data)
     if (!alreadyHasNextMaintenance) {
       if (isMaintenance && isPreventiveMaintenance && Number(data.status) === 5) {
         const objectToCreate = currentMaintenance;
@@ -876,7 +849,7 @@ export class StructureService {
           .from("maintenances")
           .insert({
             ...objectToCreate,
-            status_id: 3,
+            status_id: 7,
             planned_start: currentHasNextMaintenace,
           })
           .select('*')
