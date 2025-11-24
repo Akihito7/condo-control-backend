@@ -954,7 +954,7 @@ export class StructureService {
       .select('*')
       .eq('next_maintenance', maintenanceId);
 
-    console.log(maintenances)
+    console.log("id", maintenanceId)
     const maintenancesIdToRemoveNextMaintenance = maintenances?.map((maintenance) => maintenance.id) as Number[];
 
 
@@ -963,6 +963,7 @@ export class StructureService {
     })
       .in('id', maintenancesIdToRemoveNextMaintenance)
 
+    console.log("cheguei aqui",)
     const { error } = await this.supabase
       .from('maintenances')
       .delete()
@@ -1635,6 +1636,7 @@ export class StructureService {
         .from('maintenances')
         .select('*')
         .eq('condominium_id', condominiumId)
+        .eq('type_id', 2)
         .gte('planned_start', startDate)
         .lte('planned_start', endDate);
 
@@ -2175,119 +2177,119 @@ export class StructureService {
   }
 
 
-buildMaintenancesDashboardData(maintenances: any[]) {
-  if (!maintenances?.length) {
+  buildMaintenancesDashboardData(maintenances: any[]) {
+    if (!maintenances?.length) {
+      return {
+        cards: {
+          total: 0,
+          preventives: 0,
+          correctives: 0,
+          totalAmount: 0,
+          averageAmount: 0,
+        },
+        charts: {
+          monthlyCosts: [],
+          maintenanceTypes: [],
+          topAssets: [],
+        },
+      };
+    }
+
+    const maintenancesFinished = maintenances.filter(
+      (maintenance) => Number(maintenance.status_id) === 5
+    );
+
+    const preventives = maintenancesFinished.filter(
+      (m) => m.type_maintenance === "1"
+    );
+    const correctives = maintenancesFinished.filter(
+      (m) => m.type_maintenance === "2"
+    );
+
+    const total = maintenancesFinished.length;
+    const totalAmount = maintenancesFinished.reduce(
+      (sum, m) => sum + (m.amount || 0),
+      0
+    );
+    const averageAmount = total ? totalAmount / total : 0;
+
+    // ================================
+    // 📊 Agrupar custo mensal (12 meses fixos)
+    // ================================
+
+    // Meses fixos no formato "MMM"
+    const allMonths = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+
+    // Inicializar mapa com todos os meses = 0
+    const monthlyMap: Record<string, number> = {};
+    for (const month of allMonths) {
+      monthlyMap[month] = 0;
+    }
+
+    // Preencher com dados reais
+    for (const m of maintenancesFinished) {
+      if (!m.planned_start) continue;
+      const month = format(new Date(m.planned_start), "MMM");
+      if (monthlyMap[month] !== undefined) {
+        monthlyMap[month] += (m.amount || 0);
+      }
+    }
+
+    // Transformar em array para o gráfico
+    const monthlyCosts = allMonths.map((month) => ({
+      month,
+      amount: monthlyMap[month],
+    }));
+
+    // ================================
+    // 🧩 Preventiva vs Corretiva
+    // ================================
+    const maintenanceTypes = [
+      { type: "Preventiva", count: preventives.length },
+      { type: "Corretiva", count: correctives.length },
+    ];
+
+    // ================================
+    // 🏭 Top ativos
+    // ================================
+    const assetCountMap: Record<string, { name: string; count: number }> = {};
+
+    for (const m of maintenancesFinished) {
+      const preventiveTypeId = "1";
+
+      if (m.type_maintenance === preventiveTypeId) continue;
+
+      const asset = m.assets_maintenance;
+      if (!asset) continue;
+
+      const assetName = asset.name || "Desconhecido";
+      if (!assetCountMap[assetName]) {
+        assetCountMap[assetName] = { name: assetName, count: 0 };
+      }
+      assetCountMap[assetName].count++;
+    }
+
+    const topAssets = Object.values(assetCountMap)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
     return {
       cards: {
-        total: 0,
-        preventives: 0,
-        correctives: 0,
-        totalAmount: 0,
-        averageAmount: 0,
+        total,
+        preventives: preventives.length,
+        correctives: correctives.length,
+        totalAmount,
+        averageAmount,
       },
       charts: {
-        monthlyCosts: [],
-        maintenanceTypes: [],
-        topAssets: [],
+        monthlyCosts,
+        maintenanceTypes,
+        topAssets,
       },
     };
   }
-
-  const maintenancesFinished = maintenances.filter(
-    (maintenance) => Number(maintenance.status_id) === 5
-  );
-
-  const preventives = maintenancesFinished.filter(
-    (m) => m.type_maintenance === "1"
-  );
-  const correctives = maintenancesFinished.filter(
-    (m) => m.type_maintenance === "2"
-  );
-
-  const total = maintenancesFinished.length;
-  const totalAmount = maintenancesFinished.reduce(
-    (sum, m) => sum + (m.amount || 0),
-    0
-  );
-  const averageAmount = total ? totalAmount / total : 0;
-
-  // ================================
-  // 📊 Agrupar custo mensal (12 meses fixos)
-  // ================================
-
-  // Meses fixos no formato "MMM"
-  const allMonths = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-  ];
-
-  // Inicializar mapa com todos os meses = 0
-  const monthlyMap: Record<string, number> = {};
-  for (const month of allMonths) {
-    monthlyMap[month] = 0;
-  }
-
-  // Preencher com dados reais
-  for (const m of maintenancesFinished) {
-    if (!m.planned_start) continue;
-    const month = format(new Date(m.planned_start), "MMM");
-    if (monthlyMap[month] !== undefined) {
-      monthlyMap[month] += (m.amount || 0);
-    }
-  }
-
-  // Transformar em array para o gráfico
-  const monthlyCosts = allMonths.map((month) => ({
-    month,
-    amount: monthlyMap[month],
-  }));
-
-  // ================================
-  // 🧩 Preventiva vs Corretiva
-  // ================================
-  const maintenanceTypes = [
-    { type: "Preventiva", count: preventives.length },
-    { type: "Corretiva", count: correctives.length },
-  ];
-
-  // ================================
-  // 🏭 Top ativos
-  // ================================
-  const assetCountMap: Record<string, { name: string; count: number }> = {};
-
-  for (const m of maintenancesFinished) {
-    const preventiveTypeId = "1";
-
-    if (m.type_maintenance === preventiveTypeId) continue;
-
-    const asset = m.assets_maintenance;
-    if (!asset) continue;
-
-    const assetName = asset.name || "Desconhecido";
-    if (!assetCountMap[assetName]) {
-      assetCountMap[assetName] = { name: assetName, count: 0 };
-    }
-    assetCountMap[assetName].count++;
-  }
-
-  const topAssets = Object.values(assetCountMap)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
-  return {
-    cards: {
-      total,
-      preventives: preventives.length,
-      correctives: correctives.length,
-      totalAmount,
-      averageAmount,
-    },
-    charts: {
-      monthlyCosts,
-      maintenanceTypes,
-      topAssets,
-    },
-  };
-}
 
 }
