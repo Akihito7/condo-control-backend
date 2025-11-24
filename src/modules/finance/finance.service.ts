@@ -11,6 +11,54 @@ import { SUPABASE_CLIENT } from "../supabase/supabase.module";
 import { BodyTransaction, CreateDeliquencyBodyDTO, FinanceInfoByCondominium, GetDelinquencyParamsDTO, GetProjectionParams, PatchDelinquencyBodyDTO, UpdateCondominiumExpensesBody, UpdateCondominiumIncomesBody } from "./types/dto/finance.dto";
 import { FinanceResponseData } from "./types/response/finance.response";
 
+interface ExpenseRecord {
+  id: number;
+  condominiumId: number;
+  categoryId: number;
+  amount: number;
+  dueDate: string;
+  paymentDate: string;
+  amountPaid: number;
+  isRecurring: boolean;
+  notes: string;
+  status: number;
+  paymentMethodId: number;
+  observation: string;
+  isDeleted: boolean;
+  delinquencyRecordId: number | null;
+  apartamentId: number;
+  apartment: {
+    apartmentNumber: string;
+  };
+  paymentStatus: {
+    name: string;
+  };
+  paymentMethods: {
+    name: string;
+  };
+  categories: {
+    name: string;
+    incomeExpenseTypes: {
+      // Você pode definir a estrutura exata aqui
+      // Se não souber, use 'any' ou defina a estrutura básica:
+      // Ex: id: number; name: string;
+    }; 
+    incomeExpenseTypeId: number;
+  };
+}
+
+interface FinancialStatement {
+  id: number;
+  condominiumId: number;
+  referenceMonth: string; // Formato 'YYYY-MM-DD'
+  income: number;
+  expenses: number;
+  createdAt: string; // Formato ISO 8601 com timezone
+  updatedAt: string; // Formato ISO 8601 com timezone
+  incomeTarget: number | null;
+  expensesTarget: number | null;
+}
+
 
 
 @Injectable()
@@ -477,7 +525,8 @@ export class FinanceService {
     const [, monthStartDate] = String(startDate).split('-');
     const [, monthEndDate] = String(endDate).split('-');
     const isSameMonth = monthStartDate === monthEndDate;
-    const { totalIncome, incomeTarget, accumulatedBalance } = await this.getRevenueTotal({ condominiumId, startDate, endDate });
+    const { totalIncome, incomeTarget } = await this.getRevenueTotal({ condominiumId, startDate, endDate });
+    const { accumulatedBalance } = await this.getAccumulatedBalance({condominiumId})
     const { totalExpenses, expensesTarget } = await this.getExpensesTotal({ condominiumId, startDate, endDate });
     const balance = totalIncome - totalExpenses
     return {
@@ -489,6 +538,110 @@ export class FinanceService {
       isSameMonth,
       accumulatedBalance
     }
+  }
+
+  async getAccumulatedBalance({ condominiumId } : { condominiumId : number}){
+
+    const { data : finalcialRecords, error : finalcialRecordsError } = await this.supabase
+      .from('financial_records')
+      .select(`
+      *, 
+      apartment (apartment_number),
+      payment_status (name),
+      payment_methods (name),
+      categories (
+        name,  
+        income_expense_type_id, 
+        income_expense_types (name)
+      )
+    `)
+      .eq('is_deleted', false)
+      .eq('condominium_id', condominiumId)
+      .not('payment_date', 'is', null); 
+
+      const { data: manuallyFinances, error : manuallyFinancesError } = await this.supabase
+      .from('condominium_finances')
+      .select('*')
+      .eq('condominium_id', condominiumId)
+      
+
+      if(manuallyFinancesError) throw new Error(manuallyFinancesError.message)
+      if(finalcialRecordsError) throw new Error(finalcialRecordsError.message)
+
+      const finalcialRecordsCamelcase : ExpenseRecord[] = camelcaseKeys(finalcialRecords, { deep : true})
+
+      const manuallyFinancesFiltered = manuallyFinances.filter(manuallyFinance => {
+        const hasAmount = !!manuallyFinance.income || !!manuallyFinance.expenses
+        return hasAmount
+    }) 
+
+    const manuallyFinanacesCamelcase : FinancialStatement[] = 
+    camelcaseKeys(manuallyFinancesFiltered, { deep: true})
+
+   const formatterDateWithoutDay = (date : string) => {
+    if(!date) return ''
+    const [year, month] = date.split('-');
+    return `${year}-${month}`
+   }
+    
+      const INCOME_TYPE_ID = 4;
+      const EXPENSE_TYPE_ID = 6;
+
+
+      let totalIncome = finalcialRecordsCamelcase.reduce((total, record) => {
+        if(record.categories.incomeExpenseTypeId === INCOME_TYPE_ID){
+          const hasManuallyFinance = manuallyFinanacesCamelcase
+          .find(manuallyFinance => 
+            formatterDateWithoutDay(manuallyFinance.referenceMonth) === formatterDateWithoutDay(record.paymentDate))
+          if(hasManuallyFinance){
+            return total += hasManuallyFinance.income 
+          }
+          return total += record.amountPaid
+        }
+        return total
+      }, 0)
+
+      let totalExpense = finalcialRecordsCamelcase.reduce((total, record) => {
+        if(record.categories.incomeExpenseTypeId === EXPENSE_TYPE_ID){
+          const hasManuallyFinance = manuallyFinanacesCamelcase
+          .find(manuallyFinance => 
+            formatterDateWithoutDay(manuallyFinance.referenceMonth) === formatterDateWithoutDay(record.paymentDate))
+          if(hasManuallyFinance){
+            return total += hasManuallyFinance.expenses 
+          }
+          return total += record.amountPaid
+        }
+        return total
+      }, 0);
+
+      const financesManuallyNotUsedYet = manuallyFinanacesCamelcase
+      .filter(({referenceMonth}) => { 
+        const currentMonthFinanceManually = formatterDateWithoutDay(referenceMonth)
+
+        const monthsAlreadyUsedFinancialRecords = finalcialRecordsCamelcase
+        .map(({ paymentDate }) =>formatterDateWithoutDay(paymentDate))
+
+        const notUsedYet = !monthsAlreadyUsedFinancialRecords.includes(currentMonthFinanceManually);
+
+        return notUsedYet
+      })
+
+      const incomeFromManuallyFinance = financesManuallyNotUsedYet
+      .reduce((total, { income}) => total+=income, 0);
+
+      const expenseFromManuallyFinance = financesManuallyNotUsedYet
+      .reduce((total , { expenses}) =>expenses+=total, 0)
+
+
+      totalIncome +=incomeFromManuallyFinance
+      totalExpense +=expenseFromManuallyFinance
+
+      const accumulatedBalance = totalIncome - totalExpense
+
+      return {
+        accumulatedBalance
+      }
+
   }
 
   async deleteFinancialRegister(registerId: number) {
