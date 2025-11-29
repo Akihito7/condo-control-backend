@@ -1637,8 +1637,8 @@ export class StructureService {
         .select('*')
         .eq('condominium_id', condominiumId)
         .eq('type_id', 2)
-        .gte('planned_start', startDate)
-        .lte('planned_start', endDate);
+        .gte('payment_date', startDate)
+        .lte('payment_date', endDate);
 
       if (maintenancesError) {
         console.log(maintenancesError.message);

@@ -4,7 +4,7 @@ import { SecurityService } from "./security.service";
 
 @Controller('security')
 export class SecurityController {
-  constructor(private readonly securityService: SecurityService) { }
+  constructor(private readonly securityService: SecurityService) {}
 
   @Post('visitor/registration')
   async visitorRegistration(@Body() body: CreateVisitBody) {
