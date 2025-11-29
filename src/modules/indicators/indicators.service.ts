@@ -216,8 +216,6 @@ export class IndicatorsService {
       throw new Error(error.message)
     }
 
-    console.log("data", data)
-
     const resultFormmated: any[] = [];
 
     const shortMonths = [
@@ -228,6 +226,8 @@ export class IndicatorsService {
 
     for (let i = 0; i < 12; i++) {
       const date = `${year}-${String(i + 1).padStart(2, "0")}-01`
+
+      console.log("DATA", date)
 
       const { data: condominiumsFinances, error: condominiumFinancesError } =
         await this.supabase
@@ -241,6 +241,8 @@ export class IndicatorsService {
 
       const manuallyCondominiumFinance = condominiumsFinances?.[0]
 
+      console.log(manuallyCondominiumFinance)
+
       const hasIndexMonth = data.filter(item => {
         const [_, currentMonth] = item.month.split('-');
         const matchWithIndexMonth = Number(currentMonth) === (i + 1);
@@ -248,20 +250,19 @@ export class IndicatorsService {
       })
 
       const formattedMonth = `${shortMonths[i]}/${String(year).slice(-2)}`;
+      const incomeFromManuallyFinance = manuallyCondominiumFinance?.income ?? 0
+      const expenseFromManuallyFinance = manuallyCondominiumFinance?.expenses ?? 0
       if (hasIndexMonth.length === 0) {
         const monthData = {
           month: formattedMonth,
-          income: 0,
-          expense: 0,
+          income: incomeFromManuallyFinance,
+          expense: expenseFromManuallyFinance,
           total: 0
         }
 
         resultFormmated.push(monthData)
         continue;
       }
-
-      const incomeFromManuallyFinance = manuallyCondominiumFinance?.income ?? 0
-      const expenseFromManuallyFinance = manuallyCondominiumFinance?.expenses ?? 0
 
       const totalncome = incomeFromManuallyFinance > 0 ? incomeFromManuallyFinance : hasIndexMonth.filter(item => item.record_type_id === 4)?.[0]?.total ?? 0
       const totalExpense = expenseFromManuallyFinance > 0 ? expenseFromManuallyFinance : hasIndexMonth.filter(item => item.record_type_id === 6)?.[0]?.total ?? 0
