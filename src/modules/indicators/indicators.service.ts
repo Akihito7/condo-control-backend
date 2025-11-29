@@ -205,7 +205,9 @@ export class IndicatorsService {
       condominiumId,
       year
     } = filters;
-    const { data, error } = await this.supabase.rpc('get_chart_monthly_totals_by_type', {
+    const { data, error } = await this.supabase.rpc(
+      'get_chart_monthly_totals_by_type',
+      {
       condo_id: condominiumId,
       target_year: year
     });
@@ -213,6 +215,8 @@ export class IndicatorsService {
     if (error) {
       throw new Error(error.message)
     }
+
+    console.log("data", data)
 
     const resultFormmated: any[] = [];
 
@@ -223,6 +227,22 @@ export class IndicatorsService {
 
 
     for (let i = 0; i < 12; i++) {
+
+      const date = `${year}-${String(i+1).padStart(2,"0")}-01`
+
+      console.log(date)
+
+const { data: condominiumsFinances, error: condominiumFinancesError } =
+  await this.supabase
+    .from("condominium_finances")
+    .select("*")
+    .eq("reference_month", date)
+    .eq("condominium_id", condominiumId)
+    .or("income.gt.0,expenses.gt.0");
+
+      if(condominiumFinancesError) throw new Error(condominiumFinancesError.message)
+
+        const manuallyCondominiumFinance = condominiumsFinances?.[0]
 
       const hasIndexMonth = data.filter(item => {
         const [_, currentMonth] = item.month.split('-');
@@ -242,9 +262,17 @@ export class IndicatorsService {
         resultFormmated.push(monthData)
         continue;
       }
+      
 
-      const totalncome = hasIndexMonth.filter(item => item.record_type_id === 4)?.[0]?.total ?? 0
-      const totalExpense = hasIndexMonth.filter(item => item.record_type_id === 6)?.[0]?.total ?? 0
+      console.log("manual", manuallyCondominiumFinance)
+
+      const incomeFromManuallyFinance = manuallyCondominiumFinance?.income ?? 0
+      const expenseFromManuallyFinance = manuallyCondominiumFinance?.expenses ?? 0
+
+      console.log(incomeFromManuallyFinance, expenseFromManuallyFinance)
+
+      const totalncome = incomeFromManuallyFinance > 0 ? incomeFromManuallyFinance : hasIndexMonth.filter(item => item.record_type_id === 4)?.[0]?.total ?? 0
+      const totalExpense = expenseFromManuallyFinance > 0 ? expenseFromManuallyFinance : hasIndexMonth.filter(item => item.record_type_id === 6)?.[0]?.total ?? 0
       const total = totalncome - totalExpense;
 
       const monthData = {
