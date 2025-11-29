@@ -694,8 +694,15 @@ export class StructureService {
     const { userId } = await this.authService.decodeToken(token);
 
     const paymentMethodFormatted = data.paymentMethod ? data.paymentMethod : null;
+    
+    const STATUS_FINISH_ID = 5;
 
-    const registersToCreate = [{
+    const shouldHaveCreateNextMaintenance =
+      data.nextMaintenance
+      && Number(data.status) === STATUS_FINISH_ID
+      && Number(data.typeMaintenance) === 1
+
+    const maintenance = {
       priority_id: data.priority,
       type_id: data.type,
       description: data.description,
@@ -718,7 +725,17 @@ export class StructureService {
       contact: data.contact,
       type_maintenance: data.typeMaintenance,
       asset_maintenance_id: data.assetType
-    }]
+    };
+
+    const registersToCreate = [maintenance];
+
+    if (shouldHaveCreateNextMaintenance) {
+      registersToCreate.push({
+        ...maintenance,
+        status_id: '7',
+        planned_start: data.nextMaintenance,
+      })
+    }
 
     const { data: insertedMaintenances, error } = await this.supabase
       .from('maintenances')
