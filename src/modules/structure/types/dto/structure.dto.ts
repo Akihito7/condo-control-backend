@@ -12,52 +12,49 @@ export class CreateEmployeeBody {
 }
 
 export class UpdateEmployeeScheduleBody {
-  shift: string
-  data: WorkInfo[]
+  shift: string;
+  data: WorkInfo[];
 }
 
 type WorkInfo = {
-  workAreaId: number,
-  employeeIds: number[]
-}
+  workAreaId: number;
+  employeeIds: number[];
+};
 
 export type EventSpace = {
-  id: number
-  eventDate: string
-  startTime: string
-  endTime: string
-  apartmentId: number
-  condominiumAreaId: number
-  createdAt: Date
-  spaceEventsRelationAreaAvailability: any[]
-}
+  id: number;
+  eventDate: string;
+  startTime: string;
+  endTime: string;
+  apartmentId: number;
+  condominiumAreaId: number;
+  createdAt: Date;
+  spaceEventsRelationAreaAvailability: any[];
+};
 
 export interface InterventionBody {
-  priority: string;                 // obrigatório
-  type: string;                    // obrigatório
-  area: string;                    // obrigatório
-  description: string;             // obrigatório
-  provider?: string;               // opcional
-  value: string;                   // obrigatório, com formato regex
-  paymentMethod: string;           // obrigatório
-  paymentDate?: Date | null;       // opcional, nullable
+  priority: string; // obrigatório
+  type: string; // obrigatório
+  area: string; // obrigatório
+  description: string; // obrigatório
+  provider?: string; // opcional
+  value: string; // obrigatório, com formato regex
+  paymentMethod: string; // obrigatório
+  paymentDate?: Date | null; // opcional, nullable
   paymentCompletionDate?: Date | null;
-  duration?: string;               // opcional
-  plannedStart?: Date | null;      // opcional, nullable
-  plannedEnd?: Date | null;        // opcional, nullable
-  actualStart?: Date | null;       // opcional, nullable
-  actualEnd?: Date | null;         // opcional, nullable
-  status: string;                  // obrigatório
-  isInstallment: true,
+  duration?: string; // opcional
+  plannedStart?: Date | null; // opcional, nullable
+  plannedEnd?: Date | null; // opcional, nullable
+  actualStart?: Date | null; // opcional, nullable
+  actualEnd?: Date | null; // opcional, nullable
+  status: string; // obrigatório
+  isInstallment: true;
   numberOfInstallments: number;
-  contact?: string
+  contact?: string;
   typeMaintenance?: string;
   assetType?: string;
-  nextMaintenance?: Date | null
+  nextMaintenance?: Date | null;
 }
-
-
-
 
 export type InterventionPayment = {
   id: number;
@@ -94,14 +91,12 @@ export type InterventionPayment = {
 };
 
 export type BodyAsset = {
-
-  code: string
-  item: string
-  areaId: string
-  statusId: string
-  categoryId: string
-
-}
+  code: string;
+  item: string;
+  areaId: string;
+  statusId: string;
+  categoryId: string;
+};
 
 export type CreateMaintenanceManagementAssetDTO = {
   code: string;
@@ -112,4 +107,14 @@ export type CreateMaintenanceManagementAssetDTO = {
   supplier: string;
   type: string;
   contact: string;
+};
+
+export class CreateUnitWorkDTO {
+  apartment_id: string;
+  status_id: string;
+  forecast_date: string;
+  description: string;
+  has_art_rrt: boolean;
+  observations: string;
+  employees: { full_name: string; cpf: string }[];
 }

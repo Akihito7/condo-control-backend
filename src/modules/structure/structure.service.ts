@@ -1,26 +1,47 @@
-import { Body, Inject, Injectable, Param, Post } from "@nestjs/common";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { SUPABASE_CLIENT } from "../supabase/supabase.module";
-import { AuthService } from "../auth/auth.service";
-import * as bcrypt from "bcrypt"
-import camelcaseKeys from "camelcase-keys";
-import { format, parseISO, eachDayOfInterval, startOfMonth, endOfMonth, compareAsc, differenceInMinutes, addMonths, differenceInYears, startOfYear, endOfYear } from 'date-fns';
+import { Body, Inject, Injectable, Param, Post } from '@nestjs/common';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { SUPABASE_CLIENT } from '../supabase/supabase.module';
+import { AuthService } from '../auth/auth.service';
+import * as bcrypt from 'bcrypt';
+import camelcaseKeys from 'camelcase-keys';
+import {
+  format,
+  parseISO,
+  eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
+  compareAsc,
+  differenceInMinutes,
+  addMonths,
+  differenceInYears,
+  startOfYear,
+  endOfYear,
+} from 'date-fns';
 import { bn, id, ptBR } from 'date-fns/locale';
-import { getFullMonthInterval } from "src/utils/get-full-month-interval";
-import { flattenObject } from "src/utils/flatten-object";
-import { FinanceService } from "../finance/finance.service";
-import { BodyAsset, CreateEmployeeBody, CreateMaintenanceManagementAssetDTO, EventSpace, InterventionBody, InterventionPayment, UpdateEmployeeScheduleBody } from "./types/dto/structure.dto";
-import { translateComplexDurationToEnglish } from "src/utils/translation-duration-to-english";
-import { normalizeFileName } from "src/utils/normalize-file-name";
-import { v4 } from "uuid";
+import { getFullMonthInterval } from 'src/utils/get-full-month-interval';
+import { flattenObject } from 'src/utils/flatten-object';
+import { FinanceService } from '../finance/finance.service';
+import {
+  BodyAsset,
+  CreateEmployeeBody,
+  CreateMaintenanceManagementAssetDTO,
+  CreateUnitWorkDTO,
+  EventSpace,
+  InterventionBody,
+  InterventionPayment,
+  UpdateEmployeeScheduleBody,
+} from './types/dto/structure.dto';
+import { translateComplexDurationToEnglish } from 'src/utils/translation-duration-to-english';
+import { normalizeFileName } from 'src/utils/normalize-file-name';
+import { v4 } from 'uuid';
 
 @Injectable()
 export class StructureService {
   constructor(
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
     private readonly financeService: FinanceService,
-    private readonly authService: AuthService
-  ) { }
+    private readonly authService: AuthService,
+  ) {}
 
   async getWorkAreasOptions() {
     const { data, error } = await this.supabase.from('work_areas').select('*');
@@ -29,14 +50,17 @@ export class StructureService {
   }
 
   async getEmployeeStatusOptions() {
-    const { data, error } = await this.supabase.from('employee_status').select('*');
+    const { data, error } = await this.supabase
+      .from('employee_status')
+      .select('*');
     if (error) throw new Error(error.message);
     return data;
   }
 
-
   async getEmployeeRolesOptions() {
-    const { data, error } = await this.supabase.from('employee_roles').select('*');
+    const { data, error } = await this.supabase
+      .from('employee_roles')
+      .select('*');
     if (error) throw new Error(error.message);
     return data;
   }
@@ -52,15 +76,15 @@ export class StructureService {
       workAreaId,
       condominiumId,
       email,
-      password
+      password,
     } = data;
     const { data: roles, error: errorRoles } = await this.supabase
       .from('employee_roles')
-      .select("*")
+      .select('*')
       .eq('id', employeeRoleId);
 
     if (errorRoles) {
-      throw new Error(errorRoles.message)
+      throw new Error(errorRoles.message);
     }
     const currentRoleHasLogin = roles?.[0]?.has_login;
     let userLoginId = null;
@@ -69,112 +93,109 @@ export class StructureService {
       const passwordHashed = await bcrypt.hash(password, 8);
       const { error: insertUserError } = await this.supabase
         .from('user')
-        .insert(
-          {
-            name,
-            email,
-            phone: phoneNumber,
-            password: passwordHashed,
-            created_at: new Date,
-            cpf,
-          }
-        );
+        .insert({
+          name,
+          email,
+          phone: phoneNumber,
+          password: passwordHashed,
+          created_at: new Date(),
+          cpf,
+        });
       if (insertUserError) {
-        throw new Error(insertUserError.message)
+        throw new Error(insertUserError.message);
       }
       const { data: users, error: usersError } = await this.supabase
-        .from("user")
-        .select("id")
+        .from('user')
+        .select('id')
         .eq('email', email);
 
       if (usersError) {
-        throw new Error(usersError.message)
+        throw new Error(usersError.message);
       }
 
       userLoginId = users?.[0]?.id;
 
-      const { data: _, error: userAssociationError } = await this.supabase.from('user_association').insert({
-        user_id: userLoginId,
-        condominium_id: condominiumId,
-        role: 'employee',
-        created_at: new Date()
-      })
+      const { data: _, error: userAssociationError } = await this.supabase
+        .from('user_association')
+        .insert({
+          user_id: userLoginId,
+          condominium_id: condominiumId,
+          role: 'employee',
+          created_at: new Date(),
+        });
 
       if (userAssociationError) {
-        throw new Error(userAssociationError.message)
+        throw new Error(userAssociationError.message);
       }
     }
 
-    const { data: _, error: employeeInsertError } = await this.supabase.from('employees').insert({
-      name,
-      cpf,
-      salary: Number(data.salary),
-      employee_role_id: employeeRoleId,
-      user_id: userLoginId,
-      phone_number: phoneNumber,
-      work_area_id: workAreaId,
-      status_id: status,
-      condominium_id: condominiumId,
-    })
+    const { data: _, error: employeeInsertError } = await this.supabase
+      .from('employees')
+      .insert({
+        name,
+        cpf,
+        salary: Number(data.salary),
+        employee_role_id: employeeRoleId,
+        user_id: userLoginId,
+        phone_number: phoneNumber,
+        work_area_id: workAreaId,
+        status_id: status,
+        condominium_id: condominiumId,
+      });
 
     if (employeeInsertError) {
-      throw new Error(employeeInsertError.message)
+      throw new Error(employeeInsertError.message);
     }
   }
 
   async getEmployees(condominiumId: string) {
     const { data: employees, error: employeesError } = await this.supabase
-      .from("employees")
-      .select(`*,
+      .from('employees')
+      .select(
+        `*,
         employee_roles (*)
-        `)
+        `,
+      )
       .eq('condominium_id', condominiumId);
 
     if (employeesError) {
       throw new Error(employeesError.message);
     }
 
-
-    const promissesEmployeesWithEmail = employees?.map(async employee => {
-
-
-      const userId = employee?.user_id ?? -1
-      const {
-        data: userInfo,
-        error: userInfoError
-      } = await this.supabase
-        .from("user")
+    const promissesEmployeesWithEmail = employees?.map(async (employee) => {
+      const userId = employee?.user_id ?? -1;
+      const { data: userInfo, error: userInfoError } = await this.supabase
+        .from('user')
         .select('*')
         .eq('id', userId);
 
       if (userInfoError) {
-        throw new Error(userInfoError.message)
+        throw new Error(userInfoError.message);
       }
 
       const user = userInfo?.[0];
       return {
         email: user?.email,
         ...employee,
-      }
-    })
+      };
+    });
 
-
-    return camelcaseKeys(await Promise.all(promissesEmployeesWithEmail))
+    return camelcaseKeys(await Promise.all(promissesEmployeesWithEmail));
   }
 
   async updateEmployee(data: any) {
     const { data: employees, error: employeesError } = await this.supabase
-      .from("employees")
+      .from('employees')
       .select('*')
       .eq('id', data.employeeId);
 
     if (employeesError) {
-      throw new Error(employeesError.message)
+      throw new Error(employeesError.message);
     }
-    const currentEmployeeId = employees?.[0]?.user_id ?? -1
+    const currentEmployeeId = employees?.[0]?.user_id ?? -1;
     const { data: users, error: usersError } = await this.supabase
       .from('user')
-      .select("*")
+      .select('*')
       .eq('id', currentEmployeeId);
 
     if (usersError) {
@@ -182,65 +203,63 @@ export class StructureService {
     }
 
     const currentUser = users?.[0];
-    if (currentUser && currentUser.email !== data.email || data.password) {
-      const passwordHashed = data.password ?
-        await bcrypt.hash(data.password, 8)
+    if ((currentUser && currentUser.email !== data.email) || data.password) {
+      const passwordHashed = data.password
+        ? await bcrypt.hash(data.password, 8)
         : currentUser.password;
 
       const { data: updateUser, error: updateUserError } = await this.supabase
         .from('user')
         .update({
           email: data.email,
-          password: passwordHashed
-        }).eq('id', currentUser.id)
+          password: passwordHashed,
+        })
+        .eq('id', currentUser.id);
 
       if (updateUserError) {
-        throw new Error(updateUserError.message)
+        throw new Error(updateUserError.message);
       }
-
     }
 
-    const { data: updateEmployee, error: updateEmployeeError } = await this.supabase.from("employees")
-      .update({
-        name: data.name,
-        salary: Number(data.salary),
-        cpf: data.cpf,
-        employee_role_id: data.employeeRoleId,
-        phone_number: data.phoneNumber,
-        work_area_id: data.workAreaId,
-        status_id: data.status
-      })
-      .eq("id", data.employeeId);
+    const { data: updateEmployee, error: updateEmployeeError } =
+      await this.supabase
+        .from('employees')
+        .update({
+          name: data.name,
+          salary: Number(data.salary),
+          cpf: data.cpf,
+          employee_role_id: data.employeeRoleId,
+          phone_number: data.phoneNumber,
+          work_area_id: data.workAreaId,
+          status_id: data.status,
+        })
+        .eq('id', data.employeeId);
 
     if (updateEmployeeError) {
-      throw new Error(updateEmployeeError.message)
+      throw new Error(updateEmployeeError.message);
     }
-
   }
 
   async deleteEmployee(data: any) {
-
-    const {
-      employeeId,
-    } = data;
+    const { employeeId } = data;
 
     const { data: employees, error: employeesError } = await this.supabase
-      .from("employees")
+      .from('employees')
       .select('user_id')
       .eq('id', employeeId);
 
     if (employeesError) {
-      throw new Error(employeesError.message)
+      throw new Error(employeesError.message);
     }
 
     const currentEmployeeUser = employees?.[0];
 
     const { error } = await this.supabase
-      .from("employees")
+      .from('employees')
       .delete()
       .eq('id', employeeId);
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
 
     if (currentEmployeeUser?.user_id) {
@@ -255,34 +274,31 @@ export class StructureService {
         .eq('id', currentEmployeeUser.user_id);
 
       if (deleteUserEmployeeError) {
-        throw new Error(deleteUserEmployeeError.message)
+        throw new Error(deleteUserEmployeeError.message);
       }
     }
   }
   getDateIntervalOfDay(input: string) {
-
-    const [day, month, year] = input.split("-");
+    const [day, month, year] = input.split('-');
     const start = new Date(`${year}-${month}-${day}T00:00:00`);
     const end = new Date(start);
     end.setDate(end.getDate() + 1); // Soma 1 dia
 
     return {
       startDate: start.toISOString(), // 2025-08-05T00:00:00.000Z
-      endDate: end.toISOString(),     // 2025-08-06T00:00:00.000Z
+      endDate: end.toISOString(), // 2025-08-06T00:00:00.000Z
     };
   }
   async getEmployeeSchedule(params: any) {
-    const {
-      startDate,
-      endDate
-    } = this.getDateIntervalOfDay(params.date);
+    const { startDate, endDate } = this.getDateIntervalOfDay(params.date);
 
-    const { data: employeesSchedule, error: employeesScheduleError } = await this.supabase
-      .from("employees_schedule")
-      .select("*")
-      .eq("condominium_id", params.condominiumId)
-      .gte("start_date", startDate)
-      .lt("start_date", endDate);
+    const { data: employeesSchedule, error: employeesScheduleError } =
+      await this.supabase
+        .from('employees_schedule')
+        .select('*')
+        .eq('condominium_id', params.condominiumId)
+        .gte('start_date', startDate)
+        .lt('start_date', endDate);
 
     if (employeesScheduleError) {
       throw new Error(employeesScheduleError.message);
@@ -290,9 +306,11 @@ export class StructureService {
 
     // Geração de horários caso ainda não existam
     if (employeesSchedule.length === 0) {
-      const { data: workAreas } = await this.supabase.from("work_areas").select("id");
+      const { data: workAreas } = await this.supabase
+        .from('work_areas')
+        .select('id');
 
-      const [day, month, year] = params.date.split("-");
+      const [day, month, year] = params.date.split('-');
       const baseDate = new Date(Date.UTC(+year, +month - 1, +day)); // sempre em UTC
 
       const allSchedules: any[] = [];
@@ -315,50 +333,60 @@ export class StructureService {
         }
       }
 
-      const { error } = await this.supabase.from("employees_schedule").insert(allSchedules);
+      const { error } = await this.supabase
+        .from('employees_schedule')
+        .insert(allSchedules);
       if (error) {
         throw new Error(error.message);
       }
     }
 
     // Busca dos horários existentes
-    const [day, month, year] = params.date.split("-");
-    const startDateFormatted = new Date(Date.UTC(+year, +month - 1, +day, 0, 0, 0)).toISOString();
-    const endDateFormatted = new Date(Date.UTC(+year, +month - 1, +day, 23, 59, 59, 999)).toISOString();
+    const [day, month, year] = params.date.split('-');
+    const startDateFormatted = new Date(
+      Date.UTC(+year, +month - 1, +day, 0, 0, 0),
+    ).toISOString();
+    const endDateFormatted = new Date(
+      Date.UTC(+year, +month - 1, +day, 23, 59, 59, 999),
+    ).toISOString();
 
     const { data } = await this.supabase
-      .from("employees_schedule")
+      .from('employees_schedule')
       .select(`*`)
-      .eq("condominium_id", params.condominiumId)
-      .gte("start_date", startDateFormatted)
-      .lte("start_date", endDateFormatted)
-      .order("start_date", { ascending: true });
+      .eq('condominium_id', params.condominiumId)
+      .gte('start_date', startDateFormatted)
+      .lte('start_date', endDateFormatted)
+      .order('start_date', { ascending: true });
 
     const schedulesWithEmployees = await Promise.all(
       (data || []).map(async (schedule) => {
         const scheduleDate = new Date(schedule.start_date);
 
         const { data: employees, error } = await this.supabase
-          .from("employee_schedule_relation")
-          .select("*")
-          .eq("schedule_id", schedule.id);
+          .from('employee_schedule_relation')
+          .select('*')
+          .eq('schedule_id', schedule.id);
 
         if (error) {
-          console.log("Error fetching employees for schedule:", schedule.id, error);
+          console.log(
+            'Error fetching employees for schedule:',
+            schedule.id,
+            error,
+          );
           return null;
         }
 
         const employeeIds = Array.isArray(employees)
-          ? employees.map(employee => employee.employee_id)
+          ? employees.map((employee) => employee.employee_id)
           : [];
 
         return {
           id: schedule.id,
           date: scheduleDate,
           workAreaId: schedule.work_area_id,
-          employeeIds
+          employeeIds,
         };
-      })
+      }),
     );
 
     const result: {
@@ -370,7 +398,9 @@ export class StructureService {
     for (const item of schedulesWithEmployees) {
       if (!item) continue;
 
-      const existing = result.find(r => r.date.getTime() === item.date.getTime());
+      const existing = result.find(
+        (r) => r.date.getTime() === item.date.getTime(),
+      );
 
       const entry = {
         workAreaId: item.workAreaId,
@@ -390,77 +420,100 @@ export class StructureService {
     return result.sort((a, b) => a.date.getTime() - b.date.getTime());
   }
 
-  async updateScheduleEmployee(data: UpdateEmployeeScheduleBody[], condominiumId: string) {
-
-    data.map(async item => {
-      const { data: workAreasForCurrentHour, error: workAreasForCurrentHourError } = await this.supabase
-        .from("employees_schedule")
+  async updateScheduleEmployee(
+    data: UpdateEmployeeScheduleBody[],
+    condominiumId: string,
+  ) {
+    data.map(async (item) => {
+      const {
+        data: workAreasForCurrentHour,
+        error: workAreasForCurrentHourError,
+      } = await this.supabase
+        .from('employees_schedule')
         .select('*')
         .eq('condominium_id', condominiumId)
         .eq('start_date', item.shift);
 
       if (workAreasForCurrentHourError) {
-        throw new Error(workAreasForCurrentHourError.message)
+        throw new Error(workAreasForCurrentHourError.message);
       }
 
-      workAreasForCurrentHour.map(async workAreaCurrentHour => {
+      workAreasForCurrentHour.map(async (workAreaCurrentHour) => {
         const recordId = workAreaCurrentHour.id;
-        const currentWorkArea = item.data
-          .find(current => current.workAreaId === workAreaCurrentHour.work_area_id);
+        const currentWorkArea = item.data.find(
+          (current) => current.workAreaId === workAreaCurrentHour.work_area_id,
+        );
 
         const { data: employeeRelation, error: employeeRelationError } =
-          await this.supabase.from("employee_schedule_relation")
+          await this.supabase
+            .from('employee_schedule_relation')
             .select('*')
             .eq('schedule_id', recordId);
 
         if (employeeRelationError) {
-          return
+          return;
         }
-        const employeesToSave = currentWorkArea?.employeeIds.filter(currentEmployeeId =>
-          !employeeRelation.some(employeeAlreadySave => employeeAlreadySave.employee_id === currentEmployeeId));
+        const employeesToSave = currentWorkArea?.employeeIds.filter(
+          (currentEmployeeId) =>
+            !employeeRelation.some(
+              (employeeAlreadySave) =>
+                employeeAlreadySave.employee_id === currentEmployeeId,
+            ),
+        );
 
-        const employeeToDelete = employeeRelation.filter(employeeAlreadySave =>
-          !currentWorkArea?.employeeIds.some(currenteEmployee => employeeAlreadySave.employee_id === currenteEmployee))
+        const employeeToDelete = employeeRelation.filter(
+          (employeeAlreadySave) =>
+            !currentWorkArea?.employeeIds.some(
+              (currenteEmployee) =>
+                employeeAlreadySave.employee_id === currenteEmployee,
+            ),
+        );
 
-        employeeToDelete?.map(async employeeToDelete => {
+        employeeToDelete?.map(async (employeeToDelete) => {
           if (employeeToDelete?.employee_id) {
-            await this.supabase.from('employee_schedule_relation')
-              .delete().
-              eq('employee_id', employeeToDelete.employee_id)
-              .eq('schedule_id', employeeToDelete.schedule_id)
+            await this.supabase
+              .from('employee_schedule_relation')
+              .delete()
+              .eq('employee_id', employeeToDelete.employee_id)
+              .eq('schedule_id', employeeToDelete.schedule_id);
           }
-        })
+        });
 
-        employeesToSave?.map(async employeeId => {
+        employeesToSave?.map(async (employeeId) => {
           if (employeeId) {
-            const { data: insertEmployeeSchedule, error } = await this.supabase.from('employee_schedule_relation').insert({
-              employee_id: employeeId,
-              schedule_id: recordId,
-              condominium_id: condominiumId
-            })
+            const { data: insertEmployeeSchedule, error } = await this.supabase
+              .from('employee_schedule_relation')
+              .insert({
+                employee_id: employeeId,
+                schedule_id: recordId,
+                condominium_id: condominiumId,
+              });
 
             if (error) {
-              console.log('error : ', error)
+              console.log('error : ', error);
             }
           }
-
-        })
-      })
-
-    })
+        });
+      });
+    });
   }
 
   async getManagementSpaces(condominiumId: string) {
-    const { data, error } = await this.supabase.from('condominium_areas').select("*").eq('condominium_id', condominiumId);
-    if (error) throw new Error(error.message)
+    const { data, error } = await this.supabase
+      .from('condominium_areas')
+      .select('*')
+      .eq('condominium_id', condominiumId);
+    if (error) throw new Error(error.message);
     return data;
   }
 
   async getManagementSpacesEvents(spaceEventId: string, date: string) {
     const { data: spacesEvents, error: spacesEventsError } = await this.supabase
-      .from("space_events")
-      .select(`*, space_event_guests (*), space_events_relation_area_availability (*), condominium_areas (*)`)
-      .eq("condominium_area_id", spaceEventId);
+      .from('space_events')
+      .select(
+        `*, space_event_guests (*), space_events_relation_area_availability (*), condominium_areas (*)`,
+      )
+      .eq('condominium_area_id', spaceEventId);
 
     if (spacesEventsError) throw new Error(spacesEventsError.message);
 
@@ -473,7 +526,7 @@ export class StructureService {
       end: endOfMonth(parsedDate),
     });
 
-    const daysWithEvents = allDaysOfMonth.map(day => ({
+    const daysWithEvents = allDaysOfMonth.map((day) => ({
       dayNumber: day.getDate(),
       dayName: format(day, 'EEEE', { locale: ptBR }),
       date: format(day, 'yyyy-MM-dd'),
@@ -481,56 +534,77 @@ export class StructureService {
     }));
 
     for (let event of events) {
-      const areaAvailabilityIdSelecteds = event.spaceEventsRelationAreaAvailability.map(option => option.areaAvailabilityId);
+      const areaAvailabilityIdSelecteds =
+        event.spaceEventsRelationAreaAvailability.map(
+          (option) => option.areaAvailabilityId,
+        );
       const eventFormatted = {
         ...event,
-        areaAvailabilityIdSelecteds
-      }
-      const eventDay = daysWithEvents.find(day => day.date === event.eventDate);
+        areaAvailabilityIdSelecteds,
+      };
+      const eventDay = daysWithEvents.find(
+        (day) => day.date === event.eventDate,
+      );
       if (eventDay) {
         eventDay.events.push(eventFormatted as never);
       }
     }
     for (const day of daysWithEvents) {
-      day.events.sort((a: any, b: any) => compareAsc(parseISO(`1970-01-01T${a.startTime}`), parseISO(`1970-01-01T${b.startTime}`)));
+      day.events.sort((a: any, b: any) =>
+        compareAsc(
+          parseISO(`1970-01-01T${a.startTime}`),
+          parseISO(`1970-01-01T${b.startTime}`),
+        ),
+      );
     }
     return daysWithEvents;
   }
 
   async updateSpaceEvent(eventId, data: any) {
-    const guestsToUpdate = data.guests.filter(guest => guest.id);
-    const guestsToCreate = data.guests.filter(guest => !guest.id);
+    const guestsToUpdate = data.guests.filter((guest) => guest.id);
+    const guestsToCreate = data.guests.filter((guest) => !guest.id);
 
-    const { data: spaceEvents, error: spaceEventsError } = await this.supabase.from('space_events')
+    const { data: spaceEvents, error: spaceEventsError } = await this.supabase
+      .from('space_events')
       .select(`*, space_events_relation_area_availability (*)`)
-      .eq('id', eventId)
+      .eq('id', eventId);
 
     if (spaceEventsError) throw new Error(spaceEventsError.message);
 
     const spacesEventsCamelcase = camelcaseKeys(spaceEvents);
 
-    const periodsAlreadySelected = spacesEventsCamelcase?.[0]
-      .spaceEventsRelationAreaAvailability
-      .map(item => String(item.area_availability_id));
+    const periodsAlreadySelected =
+      spacesEventsCamelcase?.[0].spaceEventsRelationAreaAvailability.map(
+        (item) => String(item.area_availability_id),
+      );
 
-    const periodsToRemove = periodsAlreadySelected.filter(periodSelected => !data.periodSelectedIds.includes(periodSelected));
-    const periodsToAdd = data.periodSelectedIds.filter(periodId => !periodsAlreadySelected.includes(periodId));
+    const periodsToRemove = periodsAlreadySelected.filter(
+      (periodSelected) => !data.periodSelectedIds.includes(periodSelected),
+    );
+    const periodsToAdd = data.periodSelectedIds.filter(
+      (periodId) => !periodsAlreadySelected.includes(periodId),
+    );
 
-    await Promise.all(periodsToRemove.map(async periodToRemoveId => {
-      await this.supabase.from('space_events_relation_area_availability')
-        .delete()
-        .eq('area_availability_id', periodToRemoveId)
-        .eq('event_id', eventId)
-    }))
+    await Promise.all(
+      periodsToRemove.map(async (periodToRemoveId) => {
+        await this.supabase
+          .from('space_events_relation_area_availability')
+          .delete()
+          .eq('area_availability_id', periodToRemoveId)
+          .eq('event_id', eventId);
+      }),
+    );
 
-    await Promise.all(periodsToAdd.map(async (periodToAdd) => {
-      await this.supabase
-        .from('space_events_relation_area_availability')
-        .insert({
-          event_id: eventId,
-          area_availability_id: periodToAdd
-        })
-    }))
+    await Promise.all(
+      periodsToAdd.map(async (periodToAdd) => {
+        await this.supabase
+          .from('space_events_relation_area_availability')
+          .insert({
+            event_id: eventId,
+            area_availability_id: periodToAdd,
+          });
+      }),
+    );
 
     const { data: periods, error: periodsError } = await this.supabase
       .from('area_availability')
@@ -544,107 +618,131 @@ export class StructureService {
     const startTime = periods[0].start_hour;
     const endTime = periods[periods.length - 1].end_hour;
 
-    const { error } = await this.supabase.from("space_events")
+    const { error } = await this.supabase
+      .from('space_events')
       .update({
         start_time: startTime,
-        end_time: endTime
+        end_time: endTime,
       })
-      .eq('id', eventId)
+      .eq('id', eventId);
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message);
 
-    await Promise.all(guestsToCreate.map(async guest => {
-      const { error } = await this.supabase.from('space_event_guests').insert({
-        name: guest.name,
-        cpf: guest.cpf,
-        space_event_id: eventId,
-        created_at: new Date()
-      })
+    await Promise.all(
+      guestsToCreate.map(async (guest) => {
+        const { error } = await this.supabase
+          .from('space_event_guests')
+          .insert({
+            name: guest.name,
+            cpf: guest.cpf,
+            space_event_id: eventId,
+            created_at: new Date(),
+          });
 
-      if (error) console.log("error", error)
-    }))
+        if (error) console.log('error', error);
+      }),
+    );
 
-    await Promise.all(guestsToUpdate.map(async guest => {
-      await this.supabase.from('space_event_guests').update({
-        name: guest.name,
-        cpf: guest.cpf
-      })
-        .eq('id', guest.id)
-    }))
+    await Promise.all(
+      guestsToUpdate.map(async (guest) => {
+        await this.supabase
+          .from('space_event_guests')
+          .update({
+            name: guest.name,
+            cpf: guest.cpf,
+          })
+          .eq('id', guest.id);
+      }),
+    );
   }
 
   async deleteGuestSpaceEvent(guestId: string) {
-    const { error } = await this.supabase.from('space_event_guests').delete().eq('id', guestId)
-    if (error) throw new Error(error.message)
+    const { error } = await this.supabase
+      .from('space_event_guests')
+      .delete()
+      .eq('id', guestId);
+    if (error) throw new Error(error.message);
   }
 
   async deleteEvent(eventId: string) {
-    await this.supabase.from('space_events_relation_area_availability').delete().eq('event_id', eventId)
-    await this.supabase.from("space_event_guests").delete().eq("space_event_id", eventId);
-    await this.supabase.from('space_events').delete().eq('id', eventId)
+    await this.supabase
+      .from('space_events_relation_area_availability')
+      .delete()
+      .eq('event_id', eventId);
+    await this.supabase
+      .from('space_event_guests')
+      .delete()
+      .eq('space_event_id', eventId);
+    await this.supabase.from('space_events').delete().eq('id', eventId);
   }
 
   async createEventSpace(data: {
-    condominiumAreaId: string
-    apartmentId: string
-    periodSelecteds: string[]
+    condominiumAreaId: string;
+    apartmentId: string;
+    periodSelecteds: string[];
     eventDate: string;
-    guests: { name: string, cpf: string }[]
+    guests: { name: string; cpf: string }[];
   }) {
+    const hoursSelectedResult = await Promise.all(
+      data.periodSelecteds.map(async (periodId) => {
+        const { data } = await this.supabase
+          .from('area_availability')
+          .select('*')
+          .eq('id', periodId);
 
-    const hoursSelectedResult = await Promise.all(data.periodSelecteds.map(async (periodId) => {
-      const { data } = await this.supabase
-        .from('area_availability')
-        .select("*")
-        .eq('id', periodId);
+        return data?.[0];
+      }),
+    );
 
-      return data?.[0];
-    }))
-
-    hoursSelectedResult.sort((a, b) => a.start_hour.localeCompare(b.start_hour));
+    hoursSelectedResult.sort((a, b) =>
+      a.start_hour.localeCompare(b.start_hour),
+    );
 
     const startTime = hoursSelectedResult[0].start_hour;
-    const endTime = hoursSelectedResult[hoursSelectedResult.length - 1].end_hour;
+    const endTime =
+      hoursSelectedResult[hoursSelectedResult.length - 1].end_hour;
 
-    if (data.periodSelecteds.length === 0) throw new Error('Voce nao pode criar um evento sem horario');
+    if (data.periodSelecteds.length === 0)
+      throw new Error('Voce nao pode criar um evento sem horario');
 
-    const { data: eventsInserted, error } = await this.supabase.from('space_events').insert({
-      event_date: data.eventDate,
-      condominium_area_id: data.condominiumAreaId,
-      apartment_id: data.apartmentId,
-      start_time: startTime,
-      end_time: endTime,
-    })
+    const { data: eventsInserted, error } = await this.supabase
+      .from('space_events')
+      .insert({
+        event_date: data.eventDate,
+        condominium_area_id: data.condominiumAreaId,
+        apartment_id: data.apartmentId,
+        start_time: startTime,
+        end_time: endTime,
+      })
       .select('id');
 
     if (error) throw new Error(error.message);
 
     const currentEventInserted = eventsInserted?.[0];
 
-    const periodsToInsert = data.periodSelecteds.map(periodId => ({
+    const periodsToInsert = data.periodSelecteds.map((periodId) => ({
       event_id: currentEventInserted.id,
-      area_availability_id: periodId
-    }))
+      area_availability_id: periodId,
+    }));
 
     const { error: insertPeriodError } = await this.supabase
       .from('space_events_relation_area_availability')
-      .insert(periodsToInsert)
+      .insert(periodsToInsert);
 
     if (insertPeriodError) throw new Error(insertPeriodError.message);
 
-    const guestsToInsert = data.guests.map(guest => ({
+    const guestsToInsert = data.guests.map((guest) => ({
       name: guest.name,
       cpf: guest.cpf,
       space_event_id: currentEventInserted.id,
-      created_at: new Date()
+      created_at: new Date(),
     }));
 
     const { error: errorInsertGuests } = await this.supabase
       .from('space_event_guests')
       .insert(guestsToInsert);
 
-    if (errorInsertGuests) throw new Error(errorInsertGuests.message)
-
+    if (errorInsertGuests) throw new Error(errorInsertGuests.message);
   }
 
   async getMaintenances(date: string, token: string) {
@@ -652,13 +750,14 @@ export class StructureService {
     const userInfo = await this.authService.me(userId);
 
     const year = new Date(date).getFullYear();
-    const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd')
-    const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd')
+    const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd');
+    const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd');
 
     const condominiumId = userInfo.condominiumId;
     const { data: maintenances, error: maintenancesError } = await this.supabase
       .from('maintenances')
-      .select(`
+      .select(
+        `
       *,
       maintenance_statuses(*),
       priorities (*),
@@ -666,41 +765,52 @@ export class StructureService {
       maintenance_types (*),
       condominium_areas (*),
       maintenance_payments(*)
-    `)
+    `,
+      )
       .eq('condominium_id', condominiumId)
-      .eq('type_id', 2)
+      .eq('type_id', 2);
 
     if (maintenancesError) {
       throw new Error(maintenancesError.message);
     }
-    const filteredMaintenances = maintenances.filter(maintenance => {
+    const filteredMaintenances = maintenances.filter((maintenance) => {
       const quantityPayments = maintenance.maintenance_payments.length;
 
-      if (quantityPayments === 0) return true
+      if (quantityPayments === 0) return true;
 
-      return maintenance.maintenance_payments.some(payment => {
+      return maintenance.maintenance_payments.some((payment) => {
         const paymentDate = new Date(payment.payment_date);
-        return paymentDate >= new Date(startOfYear) && paymentDate <= new Date(endOfYear);
-      })
-    }
+        return (
+          paymentDate >= new Date(startOfYear) &&
+          paymentDate <= new Date(endOfYear)
+        );
+      });
+    });
+    const maintenancesFormatted: any[] = camelcaseKeys(
+      filteredMaintenances.map((maintenance) => flattenObject(maintenance)),
     );
-    const maintenancesFormatted: any[] = camelcaseKeys(filteredMaintenances.map(maintenance => flattenObject(maintenance)));
 
     return maintenancesFormatted;
   }
 
-
-  async createMaintenance(condominiumId: string, token: string, data: InterventionBody, attachments?: any[]) {
+  async createMaintenance(
+    condominiumId: string,
+    token: string,
+    data: InterventionBody,
+    attachments?: any[],
+  ) {
     const { userId } = await this.authService.decodeToken(token);
 
-    const paymentMethodFormatted = data.paymentMethod ? data.paymentMethod : null;
-    
+    const paymentMethodFormatted = data.paymentMethod
+      ? data.paymentMethod
+      : null;
+
     const STATUS_FINISH_ID = 5;
 
     const shouldHaveCreateNextMaintenance =
-      data.nextMaintenance
-      && Number(data.status) === STATUS_FINISH_ID
-      && Number(data.typeMaintenance) === 1
+      data.nextMaintenance &&
+      Number(data.status) === STATUS_FINISH_ID &&
+      Number(data.typeMaintenance) === 1;
 
     const maintenance = {
       priority_id: data.priority,
@@ -724,7 +834,7 @@ export class StructureService {
       is_installment: data.isInstallment,
       contact: data.contact,
       type_maintenance: data.typeMaintenance,
-      asset_maintenance_id: data.assetType
+      asset_maintenance_id: data.assetType,
     };
 
     const registersToCreate = [maintenance];
@@ -734,7 +844,7 @@ export class StructureService {
         ...maintenance,
         status_id: '7',
         planned_start: data.nextMaintenance,
-      })
+      });
     }
 
     const { data: insertedMaintenances, error } = await this.supabase
@@ -752,12 +862,12 @@ export class StructureService {
       const paymentsToInsert: any[] = [];
 
       const initialDate = new Date(data.paymentDate);
-      const numberOfInstallments = data.numberOfInstallments ?? 1
+      const numberOfInstallments = data.numberOfInstallments ?? 1;
 
       const installmentValue = Number(data.value) / numberOfInstallments;
 
       for (let i = 0; i < numberOfInstallments; i++) {
-        const paymentDate = addMonths(initialDate, i)
+        const paymentDate = addMonths(initialDate, i);
 
         paymentsToInsert.push({
           maintenance_id: maintenanceId,
@@ -776,7 +886,7 @@ export class StructureService {
       if (paymentsError) throw new Error(paymentsError.message);
     }
 
-    const promisesDocuments = attachments?.map(async document => {
+    const promisesDocuments = attachments?.map(async (document) => {
       const fileName = normalizeFileName(document.originalname);
       const uniqueFileName = `${v4()}-${fileName}`;
       const { data: fileData, error } = await this.supabase.storage
@@ -787,30 +897,29 @@ export class StructureService {
 
       const { id, fullPath } = fileData;
 
-      const { data: attachamentsInserted, error: insertFileError } = await this.supabase
-        .from('attachments')
-        .insert({
-          related_type: 'maintenances',
-          related_id: maintenanceId,
-          condominium_id: condominiumId,
-          date: format(new Date(), 'yyyy-MM-dd'),
-          path: fullPath,
-          bucket_name: 'condo',
-          original_name: fileName,
-          screen_origin: 'maintenance-management',
-          created_at: new Date(),
-          supabase_id: id,
-        })
-        .select('*')
-    })
+      const { data: attachamentsInserted, error: insertFileError } =
+        await this.supabase
+          .from('attachments')
+          .insert({
+            related_type: 'maintenances',
+            related_id: maintenanceId,
+            condominium_id: condominiumId,
+            date: format(new Date(), 'yyyy-MM-dd'),
+            path: fullPath,
+            bucket_name: 'condo',
+            original_name: fileName,
+            screen_origin: 'maintenance-management',
+            created_at: new Date(),
+            supabase_id: id,
+          })
+          .select('*');
+    });
 
-    await Promise.all(promisesDocuments ?? [])
+    await Promise.all(promisesDocuments ?? []);
     return { maintenanceId };
   }
 
-
   async updateMaintenance(token: string, data: any, maintenanceId: string) {
-
     const { userId } = await this.authService.decodeToken(token);
 
     const userInfo = await this.authService.me(userId);
@@ -844,10 +953,9 @@ export class StructureService {
         planned_end: data.plannedEnd,
         actual_start: data.actualStart,
         actual_end: data.actualEnd,
-        is_installment: data.isInstallment
+        is_installment: data.isInstallment,
       })
       .eq('id', maintenanceId);
-
 
     const currentMaintenance = maintenances?.[0];
 
@@ -856,31 +964,33 @@ export class StructureService {
     const isPreventiveMaintenance = Number(data.typeMaintenance) === 1;
     const currentHasNextMaintenace = data.nextMaintenance;
 
-
-    console.log(data)
+    console.log(data);
     if (!alreadyHasNextMaintenance) {
-      if (isMaintenance && isPreventiveMaintenance && Number(data.status) === 5) {
+      if (
+        isMaintenance &&
+        isPreventiveMaintenance &&
+        Number(data.status) === 5
+      ) {
         const objectToCreate = currentMaintenance;
         delete objectToCreate.id;
         const { data: nextMaintenances, error } = await this.supabase
-          .from("maintenances")
+          .from('maintenances')
           .insert({
             ...objectToCreate,
             status_id: 7,
             planned_start: currentHasNextMaintenace,
           })
-          .select('*')
+          .select('*');
 
-        const currentNextMaintenanceId = nextMaintenances?.[0]?.id
+        const currentNextMaintenanceId = nextMaintenances?.[0]?.id;
 
         await this.supabase
           .from('maintenances')
           .update({
-            next_maintenance: currentNextMaintenanceId
+            next_maintenance: currentNextMaintenanceId,
           })
-          .eq('id', maintenanceId)
+          .eq('id', maintenanceId);
       }
-
     }
 
     const alreadyInstallment = currentMaintenance.is_installment;
@@ -889,7 +999,8 @@ export class StructureService {
 
     const isInstallment = data.isInstallment;
 
-    await this.supabase.from('maintenance_payments')
+    await this.supabase
+      .from('maintenance_payments')
       .delete()
       .eq('maintenance_id', maintenanceId);
 
@@ -897,29 +1008,30 @@ export class StructureService {
       .from('maintenances')
       .update({
         is_installment: false,
-        number_of_installments: null
+        number_of_installments: null,
       })
-      .eq('id', maintenanceId)
+      .eq('id', maintenanceId);
 
-    if (maintenanceErrorUpate) throw new Error(maintenanceErrorUpate.message)
+    if (maintenanceErrorUpate) throw new Error(maintenanceErrorUpate.message);
 
     if (keepInstallment || isInstallment) {
       if (data.paymentDate && data.value) {
-
-        await this.supabase.from('maintenances').update({
-          is_installment: true,
-          number_of_installments: data.numberOfInstallments ?? 1
-        })
-          .eq('id', maintenanceId)
+        await this.supabase
+          .from('maintenances')
+          .update({
+            is_installment: true,
+            number_of_installments: data.numberOfInstallments ?? 1,
+          })
+          .eq('id', maintenanceId);
         const paymentsToInsert: any[] = [];
 
         const initialDate = new Date(data.paymentDate);
-        const numberOfInstallments = data.numberOfInstallments ?? 1
+        const numberOfInstallments = data.numberOfInstallments ?? 1;
 
         const installmentValue = Number(data.value) / numberOfInstallments;
 
         for (let i = 0; i < numberOfInstallments; i++) {
-          const paymentDate = addMonths(initialDate, i)
+          const paymentDate = addMonths(initialDate, i);
 
           paymentsToInsert.push({
             maintenance_id: maintenanceId,
@@ -939,13 +1051,13 @@ export class StructureService {
       }
     }
 
-
     if (!isInstallment && !keepInstallment && data.paymentDate && data.value) {
-
-      await this.supabase.from('maintenances').update({
-        is_installment: false,
-        number_of_installments: null
-      })
+      await this.supabase
+        .from('maintenances')
+        .update({
+          is_installment: false,
+          number_of_installments: null,
+        })
         .eq('id', maintenanceId);
 
       const paymentDate = new Date(data.paymentDate);
@@ -960,75 +1072,80 @@ export class StructureService {
           updated_at: new Date(),
         });
     }
-
-
   }
 
   async deleteMaintenance(maintenanceId: string) {
-
     const { data: maintenances } = await this.supabase
       .from('maintenances')
       .select('*')
       .eq('next_maintenance', maintenanceId);
 
-    console.log("id", maintenanceId)
-    const maintenancesIdToRemoveNextMaintenance = maintenances?.map((maintenance) => maintenance.id) as Number[];
+    console.log('id', maintenanceId);
+    const maintenancesIdToRemoveNextMaintenance = maintenances?.map(
+      (maintenance) => maintenance.id,
+    ) as Number[];
 
+    await this.supabase
+      .from('maintenances')
+      .update({
+        next_maintenance: null,
+      })
+      .in('id', maintenancesIdToRemoveNextMaintenance);
 
-    await this.supabase.from('maintenances').update({
-      next_maintenance: null
-    })
-      .in('id', maintenancesIdToRemoveNextMaintenance)
-
-    console.log("cheguei aqui",)
+    console.log('cheguei aqui');
     const { error } = await this.supabase
       .from('maintenances')
       .delete()
       .eq('id', maintenanceId);
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message);
   }
 
   async getPriorityOptions() {
-    const { data, error } = (await this.supabase.from('priorities').select("*"));
+    const { data, error } = await this.supabase.from('priorities').select('*');
     if (error) throw new Error(error.message);
     return data;
   }
 
   async getMaintenancesStatus() {
-    const { data, error } = (await this.supabase.from('maintenance_statuses').select("*"));
+    const { data, error } = await this.supabase
+      .from('maintenance_statuses')
+      .select('*');
     if (error) throw new Error(error.message);
     return data;
   }
 
   async getMaintenancesTypesOptions() {
-    const { data, error } = await this.supabase.from("maintenance_types").select('*');
-    if (error) throw new Error(error?.message)
-    return data
+    const { data, error } = await this.supabase
+      .from('maintenance_types')
+      .select('*');
+    if (error) throw new Error(error?.message);
+    return data;
   }
 
-
   async getPaymentMethodsOptions() {
-    const { data, error } = (await this.supabase.from('payment_methods').select("*"));
+    const { data, error } = await this.supabase
+      .from('payment_methods')
+      .select('*');
     if (error) throw new Error(error.message);
     return data;
   }
 
   async getAreas(condominiumId: string) {
-    const { data, error } = await this.supabase.from("condominium_areas").select('*').eq('condominium_id', condominiumId);
-    if (error) throw new Error(error.message)
+    const { data, error } = await this.supabase
+      .from('condominium_areas')
+      .select('*')
+      .eq('condominium_id', condominiumId);
+    if (error) throw new Error(error.message);
     return data;
   }
 
   async getMaintenaneCards(date: string, token: string) {
-    const currentDate = format(new Date(), 'yyyy-MM-dd')
-    const {
-      startDate,
-      endDate
-    } = getFullMonthInterval(currentDate);
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
+    const { startDate, endDate } = getFullMonthInterval(currentDate);
 
     const year = new Date(date).getFullYear();
-    const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd')
-    const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd')
+    const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd');
+    const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd');
 
     const { userId } = await this.authService.decodeToken(token);
     const userInfo = await this.authService.me(userId);
@@ -1038,14 +1155,17 @@ export class StructureService {
       .select(`*, maintenances (*)`)
 
       .gte('payment_date', startOfYear)
-      .lte('payment_date', endOfYear)
+      .lte('payment_date', endOfYear);
 
     if (error) {
       throw new Error(error.message);
     }
 
     const maintenancesPaymentsFilteredByCondominium =
-      maintenancePayments?.filter(payment => payment.maintenances.condominium_id === userInfo.condominiumId);
+      maintenancePayments?.filter(
+        (payment) =>
+          payment.maintenances.condominium_id === userInfo.condominiumId,
+      );
 
     const cardsFinance = await this.financeService.cardsFinancialEntry({
       condominiumId: userInfo.condominiumId,
@@ -1055,42 +1175,59 @@ export class StructureService {
 
     const UNDER_ANALYSIS = 3;
     const CANCELED = 4;
-    const statusExcluded = [CANCELED, UNDER_ANALYSIS]
+    const statusExcluded = [CANCELED, UNDER_ANALYSIS];
 
-    const maintenancePaymentsFormatted =
-      camelcaseKeys(maintenancesPaymentsFilteredByCondominium.map(maintenance => flattenObject(maintenance))) as InterventionPayment[]
+    const maintenancePaymentsFormatted = camelcaseKeys(
+      maintenancesPaymentsFilteredByCondominium.map((maintenance) =>
+        flattenObject(maintenance),
+      ),
+    ) as InterventionPayment[];
 
-    const monthCurrentDate = startDate.slice(0, 7)
+    const monthCurrentDate = startDate.slice(0, 7);
 
-    const newMonthlyFixedCosts = maintenancePaymentsFormatted.reduce((total, intervention) => {
-      const paymentDate = intervention.paymentDate.slice(0, 7)
-      const monthIsMatch = paymentDate === monthCurrentDate
-      const shouldCount =
-        monthIsMatch && intervention.isInstallment && !statusExcluded.includes(intervention.maintenancesStatusId)
+    const newMonthlyFixedCosts = maintenancePaymentsFormatted.reduce(
+      (total, intervention) => {
+        const paymentDate = intervention.paymentDate.slice(0, 7);
+        const monthIsMatch = paymentDate === monthCurrentDate;
+        const shouldCount =
+          monthIsMatch &&
+          intervention.isInstallment &&
+          !statusExcluded.includes(intervention.maintenancesStatusId);
 
-      return total + (shouldCount ? intervention.amount : 0)
-    }, 0)
+        return total + (shouldCount ? intervention.amount : 0);
+      },
+      0,
+    );
 
-    const registersFiltered = maintenancePaymentsFormatted.filter(register => !statusExcluded.includes(register.maintenancesStatusId))
-    const uniqueRegistersId = new Set(registersFiltered.map(register => register.maintenanceId))
-    const approvedImprovementsCost = maintenancePaymentsFormatted.reduce((acc, intervention) => {
-      if (uniqueRegistersId.has(intervention.maintenanceId)) {
-        uniqueRegistersId.delete(intervention.maintenanceId)
-        return acc += intervention.maintenancesAmount;
-      }
-      return acc;
-    }, 0);
+    const registersFiltered = maintenancePaymentsFormatted.filter(
+      (register) => !statusExcluded.includes(register.maintenancesStatusId),
+    );
+    const uniqueRegistersId = new Set(
+      registersFiltered.map((register) => register.maintenanceId),
+    );
+    const approvedImprovementsCost = maintenancePaymentsFormatted.reduce(
+      (acc, intervention) => {
+        if (uniqueRegistersId.has(intervention.maintenanceId)) {
+          uniqueRegistersId.delete(intervention.maintenanceId);
+          return (acc += intervention.maintenancesAmount);
+        }
+        return acc;
+      },
+      0,
+    );
 
     const result = {
       newMonthlyFixedCosts,
       approvedImprovementsCost,
       balance: cardsFinance.accumulatedBalance,
-    }
-    return result
+    };
+    return result;
   }
 
   async getAssetsCategoryOptions() {
-    const { data, error } = await this.supabase.from('asset_categories').select("*");
+    const { data, error } = await this.supabase
+      .from('asset_categories')
+      .select('*');
     if (error) {
       throw new Error(error.message);
     }
@@ -1098,7 +1235,9 @@ export class StructureService {
   }
 
   async getAssetsStatusOptions() {
-    const { data, error } = await this.supabase.from('asset_status').select("*");
+    const { data, error } = await this.supabase
+      .from('asset_status')
+      .select('*');
     if (error) {
       throw new Error(error.message);
     }
@@ -1110,13 +1249,13 @@ export class StructureService {
 
     if (photos.length > 0) {
       const currentPhoto = photos[0];
-      const fileName = normalizeFileName(currentPhoto.originalname)
+      const fileName = normalizeFileName(currentPhoto.originalname);
       const uniqueFileName = `${v4()}-${fileName}`;
       const { data: fileData, error } = await this.supabase.storage
         .from('condo')
         .upload(`uploads/${uniqueFileName}`, currentPhoto.buffer);
       if (error) {
-        throw new Error(error.message)
+        throw new Error(error.message);
       }
       photoUrl = fileData.fullPath;
     }
@@ -1133,64 +1272,64 @@ export class StructureService {
     });
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
     const currentAssetInserted = data?.[0];
-    return currentAssetInserted
+    return currentAssetInserted;
   }
 
   async getAssets(condominiumId: string) {
     const { data: assets, error } = await this.supabase
       .from('assets')
-      .select(`*, 
+      .select(
+        `*, 
         asset_categories (*),
         asset_status (*),
         condominium_areas (*),
         asset_reports (*)
-        `)
+        `,
+      )
       .eq('condominium_id', condominiumId);
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
 
-    const assetsFlatten: any = assets.map(asset => flattenObject(asset));
+    const assetsFlatten: any = assets.map((asset) => flattenObject(asset));
 
-    const assetsWithPublicUrlPhoto = await Promise.all(assetsFlatten.map(async (asset) => {
-      const path = asset.photo_url;
-      let publicUrlAsset = ''
+    const assetsWithPublicUrlPhoto = await Promise.all(
+      assetsFlatten.map(async (asset) => {
+        const path = asset.photo_url;
+        let publicUrlAsset = '';
 
-      if (path) {
-        const [_, ...pathFormatted] = path?.split('/');
-        const {
-          data
-        } = this.supabase.storage
-          .from('condo')
-          .getPublicUrl(`${pathFormatted.join('/')}`);
+        if (path) {
+          const [_, ...pathFormatted] = path?.split('/');
+          const { data } = this.supabase.storage
+            .from('condo')
+            .getPublicUrl(`${pathFormatted.join('/')}`);
 
-        const {
-          publicUrl
-        } = data;
+          const { publicUrl } = data;
 
-        publicUrlAsset = publicUrl;
+          publicUrlAsset = publicUrl;
+        }
 
-      }
+        const hasReportNotFinished = asset.asset_reports.some(
+          (report) => report.status != 'finalizado',
+        );
 
-      const hasReportNotFinished = asset.asset_reports.some(report => report.status != 'finalizado');
+        return {
+          ...asset,
+          reportCount: asset.asset_reports.length,
+          publicUrl: publicUrlAsset,
+          hasReportNotFinished,
+        };
+      }),
+    );
 
-      return {
-        ...asset,
-        reportCount: asset.asset_reports.length,
-        publicUrl: publicUrlAsset,
-        hasReportNotFinished
-      }
-    }))
-
-    return camelcaseKeys(assetsWithPublicUrlPhoto)
+    return camelcaseKeys(assetsWithPublicUrlPhoto);
   }
 
   async updateAsset(assetId: string, data: BodyAsset) {
-
     const { data: assets, error } = await this.supabase
       .from('assets')
       .update({
@@ -1202,7 +1341,7 @@ export class StructureService {
         updated_at: new Date(),
       })
       .eq('id', assetId)
-      .select('*')
+      .select('*');
 
     if (error) {
       throw new Error(error.message);
@@ -1220,7 +1359,7 @@ export class StructureService {
       .eq('id', assetId);
 
     if (assetsError) {
-      throw new Error(assetsError?.message)
+      throw new Error(assetsError?.message);
     }
 
     const currentAsset = assets?.[0];
@@ -1232,7 +1371,7 @@ export class StructureService {
         .from('condo')
         .remove([pathFormatted]);
       if (errorDeleteImage) {
-        throw new Error(errorDeleteImage.message)
+        throw new Error(errorDeleteImage.message);
       }
     }
 
@@ -1250,11 +1389,11 @@ export class StructureService {
 
     const { data: assets, error } = await this.supabase
       .from('assets')
-      .select("*")
+      .select('*')
       .eq('id', assetId);
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
 
     const currentAsset = assets?.[0];
@@ -1266,7 +1405,7 @@ export class StructureService {
         .from('condo')
         .remove([pathFormatted]);
       if (errorDeleteImage) {
-        throw new Error(errorDeleteImage.message)
+        throw new Error(errorDeleteImage.message);
       }
     }
 
@@ -1276,34 +1415,37 @@ export class StructureService {
 
     const uniqueFileName = `${v4()}-${fileName}`;
 
-    const { data: fileData, error: errorInsertNewPhoto } = await this.supabase.storage
-      .from('condo')
-      .upload(`uploads/${uniqueFileName}`, currentPhoto.buffer);
+    const { data: fileData, error: errorInsertNewPhoto } =
+      await this.supabase.storage
+        .from('condo')
+        .upload(`uploads/${uniqueFileName}`, currentPhoto.buffer);
 
     if (errorInsertNewPhoto) {
-      throw new Error(errorInsertNewPhoto.message)
+      throw new Error(errorInsertNewPhoto.message);
     }
     photoUrl = fileData.fullPath;
-
 
     const { error: errorUpdateAsset } = await this.supabase
       .from('assets')
       .update({
         photo_url: photoUrl,
-        updated_at: new Date()
+        updated_at: new Date(),
       })
       .eq('id', assetId);
 
     if (errorUpdateAsset) {
-      throw new Error(errorUpdateAsset.message)
+      throw new Error(errorUpdateAsset.message);
     }
   }
 
   async deleteAssetImage(assetId: string) {
-    const { data, error } = await this.supabase.from("assets").select('*').eq('id', assetId);
+    const { data, error } = await this.supabase
+      .from('assets')
+      .select('*')
+      .eq('id', assetId);
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
 
     const currentAsset = data?.[0];
@@ -1315,10 +1457,13 @@ export class StructureService {
         .from('condo')
         .remove([pathFormatted]);
       if (errorDeleteImage) {
-        throw new Error(errorDeleteImage.message)
+        throw new Error(errorDeleteImage.message);
       }
 
-      await this.supabase.from('assets').update({ photo_url: null }).eq('id', assetId)
+      await this.supabase
+        .from('assets')
+        .update({ photo_url: null })
+        .eq('id', assetId);
     }
   }
 
@@ -1326,24 +1471,26 @@ export class StructureService {
     const { userId } = await this.authService.decodeToken(token);
 
     const { data, error } = await this.supabase
-      .from("notifications")
-      .select("*")
-      .eq("to_user_id", userId)
-      .order("created_at", { ascending: false })
+      .from('notifications')
+      .select('*')
+      .eq('to_user_id', userId)
+      .order('created_at', { ascending: false })
       .limit(50);
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
 
-
-    return camelcaseKeys(data)
+    return camelcaseKeys(data);
   }
 
   async markNotificationAsRead(notificationId) {
-    await this.supabase.from("notifications").update({
-      read: true
-    }).eq('id', notificationId)
+    await this.supabase
+      .from('notifications')
+      .update({
+        read: true,
+      })
+      .eq('id', notificationId);
   }
 
   async createReportAsset(
@@ -1357,10 +1504,10 @@ export class StructureService {
       buffer: Buffer;
       size: number;
     }[],
-    token: string
+    token: string,
   ) {
-    const projectUrl = "https://vtupybmxylkunzpgxwex.supabase.co";
-    const bucket = "condo";
+    const projectUrl = 'https://vtupybmxylkunzpgxwex.supabase.co';
+    const bucket = 'condo';
 
     const photosObject = await Promise.all(
       photos.map(async (photo) => {
@@ -1390,73 +1537,75 @@ export class StructureService {
           publicUrl, // aqui já fica a URL pronta
           localId: uuid,
         };
-      })
+      }),
     );
 
     const { userId } = await this.authService.decodeToken(token);
-    const {
-      condominiumId,
-      name
-    } = await this.authService.me(userId)
+    const { condominiumId, name } = await this.authService.me(userId);
 
-    const { data: reports, error } = await this.supabase.from("asset_reports").insert({
-      asset_id: assetId,
-      description: data.description,
-      reported_by: userId,
-      photos: photosObject,
-      created_at: new Date(),
-    })
+    const { data: reports, error } = await this.supabase
+      .from('asset_reports')
+      .insert({
+        asset_id: assetId,
+        description: data.description,
+        reported_by: userId,
+        photos: photosObject,
+        created_at: new Date(),
+      })
       .select('*');
-
 
     if (error) {
       throw new Error(error.message);
     }
 
     const { data: users, error: usersError } = await this.supabase
-      .from("user")
+      .from('user')
       .select(`*, user_association (*)`);
 
+    const usersFiltered = users
+      ?.filter(
+        (user) =>
+          (String(user.user_association?.[0]?.condominium_id) ===
+            String(condominiumId) &&
+            user.user_association?.[0]?.role === 'admin') ||
+          user.user_association?.[0]?.role === 'employee',
+      )
+      .map((user) => user.id);
 
-    const usersFiltered =
-      users?.filter(user => String(user.user_association?.[0]?.condominium_id) === String(condominiumId) && user.user_association?.[0]?.role === 'admin' || user.user_association?.[0]?.role === 'employee').map(user => user.id)
+    await Promise.all(
+      (usersFiltered ?? []).map(async (toUserId) => {
+        const { error } = await this.supabase.from('notifications').insert({
+          title: 'Novo report adicionado a um patrimonio',
+          description: `Um report foi adicionado ao patrimonio pelo ${name}`,
+          created_at: new Date(),
+          created_by: userId,
+          read: false,
+          condominium_id: condominiumId,
+          to_user_id: toUserId,
+        });
 
-
-    await Promise.all((usersFiltered ?? []).map(async (toUserId) => {
-      const { error } = await this.supabase.from('notifications').insert({
-        title: 'Novo report adicionado a um patrimonio',
-        description: `Um report foi adicionado ao patrimonio pelo ${name}`,
-        created_at: new Date(),
-        created_by: userId,
-        read: false,
-        condominium_id: condominiumId,
-        to_user_id: toUserId
-      })
-
-      if (error) {
-        console.log("ERROR SENDING NOTIFICATION =>", error)
-      }
-    }))
-
-
+        if (error) {
+          console.log('ERROR SENDING NOTIFICATION =>', error);
+        }
+      }),
+    );
   }
-
 
   async getAssetWithReports(assetId: string) {
     const { data: assets, error } = await this.supabase
-      .from("assets")
+      .from('assets')
       .select(`*, asset_reports (*)`)
       .eq('id', assetId);
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
 
-    const assetsFlatten = assets.map(asset => flattenObject(asset));
+    const assetsFlatten = assets.map((asset) => flattenObject(asset));
 
     const assetsFormatted = camelcaseKeys(assetsFlatten, { deep: true });
 
-    return assetsFormatted
+    return assetsFormatted;
   }
 
   async getIndicatorsResume(date: string, token: string) {
@@ -1465,52 +1614,66 @@ export class StructureService {
 
     const year = new Date(date).getFullYear();
 
-
-    const { data: financialRecords, error: errorFinancialRecords } = await this.supabase
-      .from("financial_records")
-      .select(`*, categories (*)`)
-      .eq("condominium_id", condominiumId)
-      .eq('is_deleted', false)
-      .gte('due_date', `${year}-01-01`)
-      .lte('due_date', `${year}-12-01`)
+    const { data: financialRecords, error: errorFinancialRecords } =
+      await this.supabase
+        .from('financial_records')
+        .select(`*, categories (*)`)
+        .eq('condominium_id', condominiumId)
+        .eq('is_deleted', false)
+        .gte('due_date', `${year}-01-01`)
+        .lte('due_date', `${year}-12-01`);
 
     const INCOME_EXPENSE_TYPE_ID = 6;
 
-    const amountByMonth = await Promise.all(Array.from({ length: 12 }).map(async (_, index) => {
-      const dateFormatted = `${year}-${String(index + 1).padStart(2, '0')}`
+    const amountByMonth = await Promise.all(
+      Array.from({ length: 12 }).map(async (_, index) => {
+        const dateFormatted = `${year}-${String(index + 1).padStart(2, '0')}`;
 
-      const { data: condominiumFinances,
-        error: condiminiumFinancesErrror } = await this.supabase
-          .from('condominium_finances')
-          .select('*')
-          .eq('condominium_id', condominiumId)
-          .eq('reference_month', `${dateFormatted}-01`);
+        const { data: condominiumFinances, error: condiminiumFinancesErrror } =
+          await this.supabase
+            .from('condominium_finances')
+            .select('*')
+            .eq('condominium_id', condominiumId)
+            .eq('reference_month', `${dateFormatted}-01`);
 
-      if (condiminiumFinancesErrror) {
-        console.log('ERROR : ', condiminiumFinancesErrror.message);
-      }
+        if (condiminiumFinancesErrror) {
+          console.log('ERROR : ', condiminiumFinancesErrror.message);
+        }
 
-      const currentCondominiumFinances = condominiumFinances?.[0];
+        const currentCondominiumFinances = condominiumFinances?.[0];
 
-      if (currentCondominiumFinances && currentCondominiumFinances.expenses) {
-        return currentCondominiumFinances.expenses
-      }
-      const financialRegisterFormattedByMonth = financialRecords?.filter(financial => {
-        const [year, month] = financial.due_date.split('-')
-        const dueDateFormattedWithoutDay = `${year}-${month}`
+        if (currentCondominiumFinances && currentCondominiumFinances.expenses) {
+          return currentCondominiumFinances.expenses;
+        }
+        const financialRegisterFormattedByMonth = financialRecords?.filter(
+          (financial) => {
+            const [year, month] = financial.due_date.split('-');
+            const dueDateFormattedWithoutDay = `${year}-${month}`;
 
-        if (dueDateFormattedWithoutDay === dateFormatted && financial.categories.income_expense_type_id === INCOME_EXPENSE_TYPE_ID) return true
-        return false
-      })
+            if (
+              dueDateFormattedWithoutDay === dateFormatted &&
+              financial.categories.income_expense_type_id ===
+                INCOME_EXPENSE_TYPE_ID
+            )
+              return true;
+            return false;
+          },
+        );
 
-      const total = financialRegisterFormattedByMonth?.reduce((acc, currentValue) => {
-        return acc += currentValue.amount
-      }, 0);
-      return total
+        const total = financialRegisterFormattedByMonth?.reduce(
+          (acc, currentValue) => {
+            return (acc += currentValue.amount);
+          },
+          0,
+        );
+        return total;
+      }),
+    );
 
-    }))
-
-    const totalExpenses = amountByMonth.reduce((acc, value) => acc += value, 0)
+    const totalExpenses = amountByMonth.reduce(
+      (acc, value) => (acc += value),
+      0,
+    );
     const startOfYear = format(new Date(year, 0, 1), 'yyyy-MM-dd');
     const endOfYear = format(new Date(year, 11, 31), 'yyyy-MM-dd');
 
@@ -1522,46 +1685,66 @@ export class StructureService {
       .lte('planned_start', endOfYear);
 
     if (maintenancesError) {
-      throw new Error(maintenancesError.message)
+      throw new Error(maintenancesError.message);
     }
 
     const MAINTENANCE_TYPE_ID = 1;
     const IMPROVEMENT_TYPE_ID = 2;
 
     const resultSeparated: {
-      improvements: any[],
-      maintenances: any[]
+      improvements: any[];
+      maintenances: any[];
     } = {
       improvements: [],
       maintenances: [],
-    }
+    };
 
     let totalTimeExecutionImprovement = 0;
     let totalImprovementsFinished = 0;
 
-    maintenances.forEach(item => {
+    maintenances.forEach((item) => {
       if (item.type_id === MAINTENANCE_TYPE_ID) {
-        resultSeparated.maintenances.push(item)
+        resultSeparated.maintenances.push(item);
       } else {
         resultSeparated.improvements.push(item);
         const isFinished = !!item.actual_start && !!item.actual_end;
         if (isFinished) {
-          const timePast = differenceInMinutes(item.actual_end, item.actual_start);
+          const timePast = differenceInMinutes(
+            item.actual_end,
+            item.actual_start,
+          );
           totalTimeExecutionImprovement += timePast;
           totalImprovementsFinished += 1;
         }
       }
-    })
+    });
 
-    let accuracyExecutionDaysImprovements = (totalTimeExecutionImprovement / totalImprovementsFinished) / 1440;
+    let accuracyExecutionDaysImprovements =
+      totalTimeExecutionImprovement / totalImprovementsFinished / 1440;
     const improvementsImplemented = resultSeparated.improvements.length;
-    const improvementsCost = resultSeparated.improvements.reduce((acc, improvement) => acc += improvement.amount, 0);
-    const percentageImpactImprovements = totalExpenses ? ((improvementsCost / totalExpenses) * 100).toFixed(2) : 0
-    const accuracyImprovementCost = improvementsCost > 0 ? (improvementsCost / resultSeparated.improvements.length).toFixed(2) : 0
+    const improvementsCost = resultSeparated.improvements.reduce(
+      (acc, improvement) => (acc += improvement.amount),
+      0,
+    );
+    const percentageImpactImprovements = totalExpenses
+      ? ((improvementsCost / totalExpenses) * 100).toFixed(2)
+      : 0;
+    const accuracyImprovementCost =
+      improvementsCost > 0
+        ? (improvementsCost / resultSeparated.improvements.length).toFixed(2)
+        : 0;
     const maintenancePerfomed = resultSeparated.maintenances.length;
-    const maintenanceCost = resultSeparated.maintenances.reduce((acc, maintenance) => acc += maintenance.amount, 0);
-    const percentageImpactMaintenances = totalExpenses ? ((maintenanceCost / totalExpenses) * 100).toFixed(2) : 0
-    const accuracyMaintenanceCost = maintenanceCost > 0 ? (maintenanceCost / resultSeparated.maintenances.length).toFixed(2) : 0
+    const maintenanceCost = resultSeparated.maintenances.reduce(
+      (acc, maintenance) => (acc += maintenance.amount),
+      0,
+    );
+    const percentageImpactMaintenances = totalExpenses
+      ? ((maintenanceCost / totalExpenses) * 100).toFixed(2)
+      : 0;
+    const accuracyMaintenanceCost =
+      maintenanceCost > 0
+        ? (maintenanceCost / resultSeparated.maintenances.length).toFixed(2)
+        : 0;
 
     return {
       accuracyExecutionDaysImprovements,
@@ -1573,53 +1756,65 @@ export class StructureService {
       maintenanceCost,
       percentageImpactImprovements,
       percentageImpactMaintenances,
-    }
+    };
   }
 
-
-  async getChartImprovementsByArea({ date, token }: { date: string, token: string }) {
+  async getChartImprovementsByArea({
+    date,
+    token,
+  }: {
+    date: string;
+    token: string;
+  }) {
     const IMPROVEMENT_TYPE_ID = 2;
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
     const year = new Date(date).getFullYear();
 
-    const { data, error } = await this.supabase.from('maintenances')
-      .select("*, condominium_areas (*)")
+    const { data, error } = await this.supabase
+      .from('maintenances')
+      .select('*, condominium_areas (*)')
       .eq('condominium_id', condominiumId)
       .eq('type_id', IMPROVEMENT_TYPE_ID)
       .gte('planned_start', `${year}-01-01`)
-      .lte('planned_start', `${year}-12-01`)
-
+      .lte('planned_start', `${year}-12-01`);
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
 
     const result = data.reduce((result, current) => {
-      const hasAreaToCurrentImprovement = result.findIndex(item => item.areaId === current.condominium_areas.id);
+      const hasAreaToCurrentImprovement = result.findIndex(
+        (item) => item.areaId === current.condominium_areas.id,
+      );
       if (hasAreaToCurrentImprovement === -1) {
         const newObject = {
           areaId: current.condominium_areas.id,
           areaName: current.condominium_areas.name,
-          count: 1
-        }
-        return result = [...result, newObject]
+          count: 1,
+        };
+        return (result = [...result, newObject]);
       }
-      const resultCurrentItem = result[hasAreaToCurrentImprovement]
-      resultCurrentItem.count += 1
+      const resultCurrentItem = result[hasAreaToCurrentImprovement];
+      resultCurrentItem.count += 1;
       return result;
     }, []);
 
-    return result.sort((a, b) => b.count - a.count)
+    return result.sort((a, b) => b.count - a.count);
   }
 
-  async getChartMonthlyExpensesSummary({ date, token }: { date: string, token: string }) {
+  async getChartMonthlyExpensesSummary({
+    date,
+    token,
+  }: {
+    date: string;
+    token: string;
+  }) {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
     const year = new Date(date).getFullYear();
-
 
     const arrayMonths = Array.from({ length: 12 });
     const MONTHS_LABEL = [
@@ -1639,46 +1834,51 @@ export class StructureService {
 
     const formatterDate = (month: number) => {
       const monthFormatted = String(month).padStart(2, '0');
-      const dateFormatted = new Date(`${year}/${monthFormatted}/01`).toISOString()
-      return dateFormatted
-    }
-    const result = await Promise.all(arrayMonths.map(async (_, index) => {
-      const dateFormatted = formatterDate(index + 1);
-      const {
-        startDate,
-        endDate
-      } = getFullMonthInterval(dateFormatted);
+      const dateFormatted = new Date(
+        `${year}/${monthFormatted}/01`,
+      ).toISOString();
+      return dateFormatted;
+    };
+    const result = await Promise.all(
+      arrayMonths.map(async (_, index) => {
+        const dateFormatted = formatterDate(index + 1);
+        const { startDate, endDate } = getFullMonthInterval(dateFormatted);
 
-      const { data: maintenances, error: maintenancesError } = await this.supabase
-        .from('maintenances')
-        .select('*')
-        .eq('condominium_id', condominiumId)
-        .eq('type_id', 2)
-        .gte('payment_date', startDate)
-        .lte('payment_date', endDate);
+        const { data: maintenances, error: maintenancesError } =
+          await this.supabase
+            .from('maintenances')
+            .select('*')
+            .eq('condominium_id', condominiumId)
+            .eq('type_id', 2)
+            .gte('payment_date', startDate)
+            .lte('payment_date', endDate);
 
-      if (maintenancesError) {
-        console.log(maintenancesError.message);
-      }
+        if (maintenancesError) {
+          console.log(maintenancesError.message);
+        }
 
-      const totalCoustMaintenances = maintenances?.reduce((acc, maintenance) => acc += maintenance.amount, 0);
-      const nameMonth = MONTHS_LABEL[index];
+        const totalCoustMaintenances = maintenances?.reduce(
+          (acc, maintenance) => (acc += maintenance.amount),
+          0,
+        );
+        const nameMonth = MONTHS_LABEL[index];
 
-      return {
-        id: index,
-        nameMonth,
-        totalCoustMaintenances,
-        accumulatedBalance: totalCoustMaintenances
-      }
-    }))
+        return {
+          id: index,
+          nameMonth,
+          totalCoustMaintenances,
+          accumulatedBalance: totalCoustMaintenances,
+        };
+      }),
+    );
 
     let left = 0;
     let right = 1;
 
-
     while (right < result.length) {
-      const totalCoustAccumulated = result[left].accumulatedBalance + result[right].totalCoustMaintenances;
-      result[right].accumulatedBalance = totalCoustAccumulated
+      const totalCoustAccumulated =
+        result[left].accumulatedBalance + result[right].totalCoustMaintenances;
+      result[right].accumulatedBalance = totalCoustAccumulated;
       left += 1;
       right += 1;
     }
@@ -1689,12 +1889,12 @@ export class StructureService {
     const { error } = await this.supabase
       .from('asset_reports')
       .update({
-        status: body.status
+        status: body.status,
       })
       .eq('id', reportId);
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(error.message);
     }
   }
 
@@ -1704,170 +1904,239 @@ export class StructureService {
       .select('*')
       .eq('condominium_area_id', areaId);
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message);
 
     return camelcaseKeys(areasOptions, { deep: true });
   }
 
-  async getManagementSpacesIndicatorsCards({ date, token }: { date: string, token: string }) {
-    const {
-      startDate,
-      endDate
-    } = getFullMonthInterval(date);
+  async getManagementSpacesIndicatorsCards({
+    date,
+    token,
+  }: {
+    date: string;
+    token: string;
+  }) {
+    const { startDate, endDate } = getFullMonthInterval(date);
 
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
     const { data: events, error: eventsError } = await this.supabase
       .from('space_events')
-      .select(`*, space_events_relation_area_availability (*), condominium_areas (*)`)
+      .select(
+        `*, space_events_relation_area_availability (*), condominium_areas (*)`,
+      )
       .gte('event_date', startDate)
       .lte('event_date', endDate);
 
     if (eventsError) throw new Error(eventsError.message);
 
-    const eventsCamelcase = camelcaseKeys(events, { deep: true })
+    const eventsCamelcase = camelcaseKeys(events, { deep: true });
 
-    const { data: totalAvailableTimesMonth } = await this.supabase.rpc("get_total_area_availability", {
-      p_date: startDate,
-      p_condominium_id: condominiumId
-    })
+    const { data: totalAvailableTimesMonth } = await this.supabase.rpc(
+      'get_total_area_availability',
+      {
+        p_date: startDate,
+        p_condominium_id: condominiumId,
+      },
+    );
 
-    const totalBookingsMonth = eventsCamelcase.reduce((acc, event) => acc += event.spaceEventsRelationAreaAvailability.length, 0);
-    const totalOccupationMonth = ((totalBookingsMonth / totalAvailableTimesMonth) * 100).toFixed(2)
+    const totalBookingsMonth = eventsCamelcase.reduce(
+      (acc, event) => (acc += event.spaceEventsRelationAreaAvailability.length),
+      0,
+    );
+    const totalOccupationMonth = (
+      (totalBookingsMonth / totalAvailableTimesMonth) *
+      100
+    ).toFixed(2);
     const totalRevenueMOnth = eventsCamelcase.reduce((acc, event) => {
-      const total = event.condominiumAreas.hourlyRent * event.spaceEventsRelationAreaAvailability.length;
-      return acc += total
+      const total =
+        event.condominiumAreas.hourlyRent *
+        event.spaceEventsRelationAreaAvailability.length;
+      return (acc += total);
     }, 0);
 
     return {
       totalBookingsMonth,
       totalOccupationMonth,
-      totalRevenueMOnth
-    }
+      totalRevenueMOnth,
+    };
   }
 
-  async getManagementBookingsByAreas({ date, token }: { date: string, token: string }) {
+  async getManagementBookingsByAreas({
+    date,
+    token,
+  }: {
+    date: string;
+    token: string;
+  }) {
     const { startDate, endDate } = getFullMonthInterval(date);
 
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
-
 
     const { data, error } = await this.supabase.rpc('get_area_event_count', {
       p_start_date: startDate,
       p_end_date: endDate,
-      p_condominium_id: condominiumId
-    })
+      p_condominium_id: condominiumId,
+    });
 
     if (error) throw new Error(error.message);
 
     return camelcaseKeys(data);
   }
 
-  async getManagementPercentageByArea({ date, token }: { date: string, token: string }) {
+  async getManagementPercentageByArea({
+    date,
+    token,
+  }: {
+    date: string;
+    token: string;
+  }) {
     const { startDate, endDate } = getFullMonthInterval(date);
 
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
-    const { data, error } = await this.supabase
-      .rpc('get_area_event_indicators_percentage', {
+    const { data, error } = await this.supabase.rpc(
+      'get_area_event_indicators_percentage',
+      {
         p_condominium_id: condominiumId,
         p_start_date: startDate,
-        p_end_date: endDate
-      });
+        p_end_date: endDate,
+      },
+    );
 
     if (error) throw new Error(error.message);
 
     return camelcaseKeys(data);
   }
 
-  async getMonthlyRevenueAndOccupation({ token, date }: { token: string, date: string }) {
-
+  async getMonthlyRevenueAndOccupation({
+    token,
+    date,
+  }: {
+    token: string;
+    date: string;
+  }) {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
-    const months = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const months = [
+      'jan',
+      'fev',
+      'mar',
+      'abr',
+      'mai',
+      'jun',
+      'jul',
+      'ago',
+      'set',
+      'out',
+      'nov',
+      'dez',
+    ];
 
-    const [year] = date.split('-')
+    const [year] = date.split('-');
 
-    const startDate = `${year}/01/01`
-    const endDate = `${year}/12/31`
+    const startDate = `${year}/01/01`;
+    const endDate = `${year}/12/31`;
     const allMonthsIndex = Array.from({ length: 12 });
 
-    const { data: eventsData, error: errorEvents } = await this.supabase.from("space_events")
-      .select(`
+    const { data: eventsData, error: errorEvents } = await this.supabase
+      .from('space_events')
+      .select(
+        `
         *, 
         condominium_areas (*),
         space_events_relation_area_availability (*)
-        `)
+        `,
+      )
       .gte('event_date', startDate)
-      .lte('event_date', endDate)
+      .lte('event_date', endDate);
 
     if (errorEvents) throw new Error(errorEvents.message);
 
-    const eventsCamelcase = camelcaseKeys(eventsData, { deep: true })
+    const eventsCamelcase = camelcaseKeys(eventsData, { deep: true });
 
+    const dataFormatted = await Promise.all(
+      allMonthsIndex.map(async (_, index) => {
+        const date = new Date(
+          `${year}/${String(index + 1).padStart(2, '0')}/01`,
+        );
+        const { startDate } = getFullMonthInterval(date.toISOString());
 
-    const dataFormatted = await Promise.all(allMonthsIndex.map(async (_, index) => {
-      const date = new Date(`${year}/${String(index + 1).padStart(2, '0')}/01`);
-      const { startDate } = getFullMonthInterval(date.toISOString());
+        const eventsFilteredByCurrentMonth = eventsCamelcase.filter((event) => {
+          const [year, month] = event.eventDate.split('-');
+          const dateEventFormatted = `${year}-${month}-01`;
+          const isSameMonth = dateEventFormatted === startDate;
+          return isSameMonth;
+        });
 
-      const eventsFilteredByCurrentMonth = eventsCamelcase.filter(event => {
-        const [year, month] = event.eventDate.split('-')
-        const dateEventFormatted = `${year}-${month}-01`
-        const isSameMonth = dateEventFormatted === startDate
-        return isSameMonth
-      });
+        const { data: totalAvailableTimesMonth } = await this.supabase.rpc(
+          'get_total_area_availability',
+          {
+            p_date: startDate,
+            p_condominium_id: condominiumId,
+          },
+        );
 
-      const { data: totalAvailableTimesMonth } = await this.supabase.rpc("get_total_area_availability", {
-        p_date: startDate,
-        p_condominium_id: condominiumId
-      })
+        const totalPeriods = eventsFilteredByCurrentMonth.reduce(
+          (acc, event) =>
+            (acc += event.spaceEventsRelationAreaAvailability.length),
+          0,
+        );
+        const totalRevenue = eventsFilteredByCurrentMonth.reduce(
+          (acc, event) => {
+            const { hourlyRent } = event.condominiumAreas;
+            const totalPeriodCurrentEvent =
+              event.spaceEventsRelationAreaAvailability.length;
+            const totalAmount = hourlyRent * totalPeriodCurrentEvent;
+            return (acc += totalAmount);
+          },
+          0,
+        );
+        const totalOccupation = (
+          (totalPeriods / totalAvailableTimesMonth) *
+          100
+        ).toFixed(2);
 
-      const totalPeriods = eventsFilteredByCurrentMonth.reduce((acc, event) => acc += event.spaceEventsRelationAreaAvailability.length, 0);
-      const totalRevenue = eventsFilteredByCurrentMonth.reduce((acc, event) => {
-        const { hourlyRent } = event.condominiumAreas;
-        const totalPeriodCurrentEvent = event.spaceEventsRelationAreaAvailability.length;
-        const totalAmount = hourlyRent * totalPeriodCurrentEvent;
-        return acc += totalAmount
-      }, 0)
-      const totalOccupation = ((totalPeriods / totalAvailableTimesMonth) * 100).toFixed(2);
-
-      return {
-        monthName: months[index],
-        totalRevenue,
-        totalOccupation
-      }
-    }))
+        return {
+          monthName: months[index],
+          totalRevenue,
+          totalOccupation,
+        };
+      }),
+    );
 
     return dataFormatted;
   }
 
-  async createMaintenanceManagementAssetsType({ token, data }: { token: string, data: { name: string } }) {
+  async createMaintenanceManagementAssetsType({
+    token,
+    data,
+  }: {
+    token: string;
+    data: { name: string };
+  }) {
     const { userId } = await this.authService.decodeToken(token);
-    const {
-      condominiumId
-    } = await this.authService.me(userId);
+    const { condominiumId } = await this.authService.me(userId);
 
     if (!condominiumId) {
-      throw new Error('Nenhum condominio encontrado para esse usuario.')
+      throw new Error('Nenhum condominio encontrado para esse usuario.');
     }
 
-    const {
-      name
-    } = data;
+    const { name } = data;
 
     const { data: types, error } = await this.supabase
       .from('assets_maintenance_types')
       .insert({
         condominium_id: condominiumId,
-        name
+        name,
       })
-      .select('*')
+      .select('*');
 
-    if (error) throw new Error("Erro ao cadastrar tipo.");
+    if (error) throw new Error('Erro ao cadastrar tipo.');
 
     return camelcaseKeys(types?.[0]);
   }
@@ -1883,17 +2152,33 @@ export class StructureService {
 
     if (error) throw new Error(error.message);
 
-    return camelcaseKeys(data, { deep: true })
+    return camelcaseKeys(data, { deep: true });
   }
 
-  async createMaintenanceManagementAsset
-    ({ token, data, attachments }: { token: string, data: CreateMaintenanceManagementAssetDTO, attachments: any[] }) {
+  async createMaintenanceManagementAsset({
+    token,
+    data,
+    attachments,
+  }: {
+    token: string;
+    data: CreateMaintenanceManagementAssetDTO;
+    attachments: any[];
+  }) {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
-    const { name, code, frequency, installationDate, lifespan, supplier, type, contact } = data;
+    const {
+      name,
+      code,
+      frequency,
+      installationDate,
+      lifespan,
+      supplier,
+      type,
+      contact,
+    } = data;
 
-    const estimatedUsefulLife = `${lifespan} year`
+    const estimatedUsefulLife = `${lifespan} year`;
 
     const { data: assets, error } = await this.supabase
       .from('assets_maintenance')
@@ -1906,15 +2191,15 @@ export class StructureService {
         installation_date: new Date(installationDate).toISOString(),
         estimated_useful_life: estimatedUsefulLife,
         maintenance_frequency: frequency,
-        code
+        code,
       })
-      .select('*')
+      .select('*');
 
     if (error) throw new Error(error.message);
 
     const currentAsset = assets?.[0];
 
-    const promisesDocuments = attachments.map(async document => {
+    const promisesDocuments = attachments.map(async (document) => {
       const fileName = normalizeFileName(document.originalname);
       const uniqueFileName = `${v4()}-${fileName}`;
       const { data: fileData, error } = await this.supabase.storage
@@ -1925,24 +2210,25 @@ export class StructureService {
 
       const { id, fullPath } = fileData;
 
-      const { data: attachamentsInserted, error: insertFileError } = await this.supabase
-        .from('attachments')
-        .insert({
-          related_type: 'maintenance-management-asset',
-          related_id: currentAsset?.id,
-          condominium_id: condominiumId,
-          date: format(new Date(), 'yyyy-MM-dd'),
-          path: fullPath,
-          bucket_name: 'condo',
-          original_name: fileName,
-          screen_origin: 'maintenance-management',
-          created_at: new Date(),
-          supabase_id: id,
-        })
-        .select('*')
-    })
+      const { data: attachamentsInserted, error: insertFileError } =
+        await this.supabase
+          .from('attachments')
+          .insert({
+            related_type: 'maintenance-management-asset',
+            related_id: currentAsset?.id,
+            condominium_id: condominiumId,
+            date: format(new Date(), 'yyyy-MM-dd'),
+            path: fullPath,
+            bucket_name: 'condo',
+            original_name: fileName,
+            screen_origin: 'maintenance-management',
+            created_at: new Date(),
+            supabase_id: id,
+          })
+          .select('*');
+    });
 
-    await Promise.all(promisesDocuments)
+    await Promise.all(promisesDocuments);
   }
 
   async getMaintenanceManagementAssets(token: string) {
@@ -1953,99 +2239,109 @@ export class StructureService {
       .from('assets_maintenance')
       .select('*')
       .eq('condominium_id', condominiumId)
-      .eq('is_deleted', false)
+      .eq('is_deleted', false);
 
     if (error) throw new Error(error.message);
 
-    const dataFormatted = data?.map(asset => {
+    const dataFormatted = data?.map((asset) => {
+      const installationDate = new Date(asset.installation_date);
 
-      const installationDate = new Date(asset.installation_date)
+      const differenceInYearsNumber = differenceInYears(
+        new Date(),
+        installationDate,
+      );
 
-      const differenceInYearsNumber = differenceInYears(new Date, installationDate);
+      const estimatedUsefulLife = Number(
+        asset.estimated_useful_life?.split(' ')?.[0],
+      );
 
-      const estimatedUsefulLife = Number(asset.estimated_useful_life?.split(' ')?.[0]);
+      const remainingUsefulLifeNumber =
+        estimatedUsefulLife - differenceInYearsNumber;
 
-      const remainingUsefulLifeNumber = estimatedUsefulLife - differenceInYearsNumber
-
-      const remainingUsefulLife = remainingUsefulLifeNumber > 1 ? `${remainingUsefulLifeNumber} anos` : `${remainingUsefulLifeNumber} ano`
+      const remainingUsefulLife =
+        remainingUsefulLifeNumber > 1
+          ? `${remainingUsefulLifeNumber} anos`
+          : `${remainingUsefulLifeNumber} ano`;
 
       return {
         ...asset,
-        remainingUsefulLife
-      }
-    })
+        remainingUsefulLife,
+      };
+    });
 
-    return camelcaseKeys(dataFormatted, { deep: true })
+    return camelcaseKeys(dataFormatted, { deep: true });
   }
 
   async getMaintenancesManagement(token: string, date: string) {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
-    const {
-      startDate,
-      endDate
-    } = getFullMonthInterval(date);
+    const { startDate, endDate } = getFullMonthInterval(date);
 
     const { data, error } = await this.supabase
-      .from("maintenances")
-      .select(`
+      .from('maintenances')
+      .select(
+        `
         *,
         assets_maintenance (*)
-        `)
+        `,
+      )
       .eq('condominium_id', condominiumId)
       .eq('type_id', 1)
       .not('asset_maintenance_id', 'is', null)
       .gte('planned_start', startDate)
-      .lte('planned_start', endDate)
+      .lte('planned_start', endDate);
 
     if (error) throw new Error(error.message);
 
-    return camelcaseKeys(data.map(maintenance => flattenObject(maintenance)));
+    return camelcaseKeys(data.map((maintenance) => flattenObject(maintenance)));
   }
 
   async getCalendarMaintenances(token: string, date: string) {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
-    const {
-      startDate,
-      endDate
-    } = getFullMonthInterval(date);
+    const { startDate, endDate } = getFullMonthInterval(date);
 
     const { data, error } = await this.supabase
-      .from("maintenances")
-      .select(`
+      .from('maintenances')
+      .select(
+        `
         *,
         assets_maintenance (*)
-        `)
+        `,
+      )
       .eq('condominium_id', condominiumId)
       .eq('type_id', 1)
       .not('asset_maintenance_id', 'is', null)
       .gte('planned_start', startDate)
-      .lte('planned_start', endDate)
+      .lte('planned_start', endDate);
 
     if (error) throw new Error(error.message);
 
-    const maintenanceEvents: { date: string; dayName: string; dayEvents: any[]; }[] = [];
+    const maintenanceEvents: {
+      date: string;
+      dayName: string;
+      dayEvents: any[];
+    }[] = [];
 
     const [year, month, day] = endDate.split('-');
 
     for (let index = 0; index < Number(day); index++) {
-      const currentDate = `${year}/${month}/${String(index + 1).padStart(2, '0')}`
+      const currentDate = `${year}/${month}/${String(index + 1).padStart(2, '0')}`;
 
-      const eventsForCurrentDate = data.filter(maintenance => {
+      const eventsForCurrentDate = data.filter((maintenance) => {
         const plannedStart = maintenance.planned_start;
         if (!plannedStart) return false;
         const plannedStartFormatted = format(plannedStart, 'yyyy/MM/dd');
         return plannedStartFormatted === currentDate;
       });
 
-      const dayName = format(new Date(currentDate), 'EEEE', { locale: ptBR })
+      const dayName = format(new Date(currentDate), 'EEEE', { locale: ptBR });
 
       const dayEventDetails = {
         date: currentDate,
         dayName,
-        dayEvents: camelcaseKeys(eventsForCurrentDate, { deep: true })
+        dayEvents: camelcaseKeys(eventsForCurrentDate, { deep: true }),
       };
 
       maintenanceEvents.push(dayEventDetails);
@@ -2055,73 +2351,80 @@ export class StructureService {
   }
 
   async getMaintenanceManagementAssetsAttachments(assetId: string) {
-    const { data, error } = await this.supabase.from('attachments')
+    const { data, error } = await this.supabase
+      .from('attachments')
       .select('*')
       .eq('related_type', 'maintenance-management-asset')
       .eq('related_id', assetId);
     if (error) throw new Error(error.message);
-    return camelcaseKeys(data, { deep: true })
+    return camelcaseKeys(data, { deep: true });
   }
 
   async getMaintenanceManagementAttachments(maintenanceId: string) {
-    const { data, error } = await this.supabase.from('attachments')
+    const { data, error } = await this.supabase
+      .from('attachments')
       .select('*')
       .eq('related_type', 'maintenances')
       .eq('related_id', maintenanceId);
 
     if (error) throw new Error(error.message);
-    return camelcaseKeys(data, { deep: true })
+    return camelcaseKeys(data, { deep: true });
   }
 
   async deleteMaintenanceManagementAssetsAttachments(attchamentId: string) {
     const { error } = await this.supabase
       .from('attachments')
       .delete()
-      .eq('id', attchamentId)
+      .eq('id', attchamentId);
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message);
   }
 
   async deleteMaintenanceManagementAttachments(attchamentId: string) {
     const { error } = await this.supabase
       .from('attachments')
       .delete()
-      .eq('id', attchamentId)
+      .eq('id', attchamentId);
 
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(error.message);
   }
 
   async addMaintenanceManagementAssetsAttachments(attachments, data) {
     const { maintenanceAssetId, condominiumId } = data;
-    console.log(data)
+    console.log(data);
 
-    const newAttachamnets = await Promise.all(attachments.map(async attachment => {
-      const fileName = normalizeFileName(attachment.originalname);
-      const uniqueFileName = `${v4()}-${fileName}`;
-      const { data: fileData, error } = await this.supabase.storage
-        .from('condo')
-        .upload(`uploads/${uniqueFileName}`, attachment.buffer);
+    const newAttachamnets = await Promise.all(
+      attachments.map(async (attachment) => {
+        const fileName = normalizeFileName(attachment.originalname);
+        const uniqueFileName = `${v4()}-${fileName}`;
+        const { data: fileData, error } = await this.supabase.storage
+          .from('condo')
+          .upload(`uploads/${uniqueFileName}`, attachment.buffer);
 
-      if (error) console.log('FINANCE UPLOAD FILES ERROR : ', error.message);
+        if (error) console.log('FINANCE UPLOAD FILES ERROR : ', error.message);
 
-      const { data: attachamentsInserted, error: insertFileError } = await this.supabase.from('attachments').insert({
-        related_type: 'maintenance-management-asset',
-        related_id: maintenanceAssetId,
-        condominium_id: condominiumId,
-        date: format(new Date(), 'yyyy-MM-dd'),
-        path: fileData?.fullPath,
-        bucket_name: 'condo',
-        original_name: attachment.originalname,
-        screen_origin: 'maintenance-management-asset',
-        created_at: new Date(),
-        supabase_id: fileData?.id,
-      })
-        .select('*')
+        const { data: attachamentsInserted, error: insertFileError } =
+          await this.supabase
+            .from('attachments')
+            .insert({
+              related_type: 'maintenance-management-asset',
+              related_id: maintenanceAssetId,
+              condominium_id: condominiumId,
+              date: format(new Date(), 'yyyy-MM-dd'),
+              path: fileData?.fullPath,
+              bucket_name: 'condo',
+              original_name: attachment.originalname,
+              screen_origin: 'maintenance-management-asset',
+              created_at: new Date(),
+              supabase_id: fileData?.id,
+            })
+            .select('*');
 
-      if (insertFileError) console.log(insertFileError.message)
+        if (insertFileError) console.log(insertFileError.message);
 
-      return attachamentsInserted?.[0]
-    }))
+        return attachamentsInserted?.[0];
+      }),
+    );
 
     return camelcaseKeys(newAttachamnets, { deep: true });
   }
@@ -2129,47 +2432,49 @@ export class StructureService {
   async addMaintenanceManagementAttachments(attachments, data) {
     const { maintenanceId, condominiumId } = data;
 
-    const newAttachamnets = await Promise.all(attachments.map(async attachment => {
-      const fileName = normalizeFileName(attachment.originalname);
-      const uniqueFileName = `${v4()}-${fileName}`;
-      const { data: fileData, error } = await this.supabase.storage
-        .from('condo')
-        .upload(`uploads/${uniqueFileName}`, attachment.buffer);
+    const newAttachamnets = await Promise.all(
+      attachments.map(async (attachment) => {
+        const fileName = normalizeFileName(attachment.originalname);
+        const uniqueFileName = `${v4()}-${fileName}`;
+        const { data: fileData, error } = await this.supabase.storage
+          .from('condo')
+          .upload(`uploads/${uniqueFileName}`, attachment.buffer);
 
-      if (error) console.log('FINANCE UPLOAD FILES ERROR : ', error.message);
+        if (error) console.log('FINANCE UPLOAD FILES ERROR : ', error.message);
 
-      const { data: attachamentsInserted, error: insertFileError } = await this.supabase
-        .from('attachments')
-        .insert({
-          related_type: 'maintenances',
-          related_id: maintenanceId,
-          condominium_id: condominiumId,
-          date: format(new Date(), 'yyyy-MM-dd'),
-          path: fileData?.fullPath,
-          bucket_name: 'condo',
-          original_name: attachment.originalname,
-          screen_origin: 'maintenance-management',
-          created_at: new Date(),
-          supabase_id: fileData?.id,
-        })
-        .select('*')
+        const { data: attachamentsInserted, error: insertFileError } =
+          await this.supabase
+            .from('attachments')
+            .insert({
+              related_type: 'maintenances',
+              related_id: maintenanceId,
+              condominium_id: condominiumId,
+              date: format(new Date(), 'yyyy-MM-dd'),
+              path: fileData?.fullPath,
+              bucket_name: 'condo',
+              original_name: attachment.originalname,
+              screen_origin: 'maintenance-management',
+              created_at: new Date(),
+              supabase_id: fileData?.id,
+            })
+            .select('*');
 
-      if (insertFileError) console.log(insertFileError.message)
+        if (insertFileError) console.log(insertFileError.message);
 
-      return attachamentsInserted?.[0]
-    }))
+        return attachamentsInserted?.[0];
+      }),
+    );
 
     return camelcaseKeys(newAttachamnets, { deep: true });
   }
-
 
   async deleteMaintenanceManagementAssets(assetId: string) {
     await this.supabase
       .from('assets_maintenance')
       .update({
-        is_deleted: true
+        is_deleted: true,
       })
-      .eq('id', assetId)
+      .eq('id', assetId);
   }
 
   async getMaintenancesSummary(token: string, year: string) {
@@ -2180,19 +2485,19 @@ export class StructureService {
     const startDate = startOfYear(new Date(numericYear, 0, 1));
     const endDate = endOfYear(new Date(numericYear, 0, 1));
 
-    const { data: maintenances, error: maintenanacesError } = await this.supabase
-      .from('maintenances')
-      .select('*, assets_maintenance (*)')
-      .eq('condominium_id', condominiumId)
-      .gte('planned_start', startDate.toISOString())
-      .lte('planned_start', endDate.toISOString())
-      .eq('type_id', 1)
+    const { data: maintenances, error: maintenanacesError } =
+      await this.supabase
+        .from('maintenances')
+        .select('*, assets_maintenance (*)')
+        .eq('condominium_id', condominiumId)
+        .gte('planned_start', startDate.toISOString())
+        .lte('planned_start', endDate.toISOString())
+        .eq('type_id', 1);
 
     if (maintenanacesError) throw new Error(maintenanacesError.message);
 
-    return this.buildMaintenancesDashboardData(maintenances)
+    return this.buildMaintenancesDashboardData(maintenances);
   }
-
 
   buildMaintenancesDashboardData(maintenances: any[]) {
     if (!maintenances?.length) {
@@ -2213,31 +2518,37 @@ export class StructureService {
     }
 
     const maintenancesFinished = maintenances.filter(
-      (maintenance) => Number(maintenance.status_id) === 5
+      (maintenance) => Number(maintenance.status_id) === 5,
     );
 
     const preventives = maintenancesFinished.filter(
-      (m) => m.type_maintenance === "1"
+      (m) => m.type_maintenance === '1',
     );
     const correctives = maintenancesFinished.filter(
-      (m) => m.type_maintenance === "2"
+      (m) => m.type_maintenance === '2',
     );
 
     const total = maintenancesFinished.length;
     const totalAmount = maintenancesFinished.reduce(
       (sum, m) => sum + (m.amount || 0),
-      0
+      0,
     );
     const averageAmount = total ? totalAmount / total : 0;
 
-    // ================================
-    // 📊 Agrupar custo mensal (12 meses fixos)
-    // ================================
-
     // Meses fixos no formato "MMM"
     const allMonths = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
 
     // Inicializar mapa com todos os meses = 0
@@ -2249,9 +2560,9 @@ export class StructureService {
     // Preencher com dados reais
     for (const m of maintenancesFinished) {
       if (!m.planned_start) continue;
-      const month = format(new Date(m.planned_start), "MMM");
+      const month = format(new Date(m.planned_start), 'MMM');
       if (monthlyMap[month] !== undefined) {
-        monthlyMap[month] += (m.amount || 0);
+        monthlyMap[month] += m.amount || 0;
       }
     }
 
@@ -2261,28 +2572,22 @@ export class StructureService {
       amount: monthlyMap[month],
     }));
 
-    // ================================
-    // 🧩 Preventiva vs Corretiva
-    // ================================
     const maintenanceTypes = [
-      { type: "Preventiva", count: preventives.length },
-      { type: "Corretiva", count: correctives.length },
+      { type: 'Preventiva', count: preventives.length },
+      { type: 'Corretiva', count: correctives.length },
     ];
 
-    // ================================
-    // 🏭 Top ativos
-    // ================================
     const assetCountMap: Record<string, { name: string; count: number }> = {};
 
     for (const m of maintenancesFinished) {
-      const preventiveTypeId = "1";
+      const preventiveTypeId = '1';
 
       if (m.type_maintenance === preventiveTypeId) continue;
 
       const asset = m.assets_maintenance;
       if (!asset) continue;
 
-      const assetName = asset.name || "Desconhecido";
+      const assetName = asset.name || 'Desconhecido';
       if (!assetCountMap[assetName]) {
         assetCountMap[assetName] = { name: assetName, count: 0 };
       }
@@ -2309,4 +2614,103 @@ export class StructureService {
     };
   }
 
+  async getUnitWorksStatus() {
+    const { data: statuses, error } = await this.supabase
+      .from('works_unit_statuses')
+      .select('id, name');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(statuses, { deep: true });
+  }
+
+  async createUnitWork({
+    token,
+    data,
+    attachments,
+  }: {
+    token: string;
+    data: CreateUnitWorkDTO;
+    attachments: any[];
+  }) {
+    const { data: informationsApartaments, error: fetchApartamentError } =
+      await this.supabase
+        .from('apartment')
+        .select('*')
+        .eq('id', data.apartment_id);
+
+    if (fetchApartamentError) throw new Error(fetchApartamentError.message);
+
+    const currentApartament = informationsApartaments?.[0];
+
+    if (!currentApartament) throw new Error('Apartamento nao encontrado.');
+
+    const blockId = currentApartament.block_id;
+    const condominiumId = currentApartament.condominium_id;
+
+    const { data: insertedWorkUnits, error: workUnitsInsertError } =
+      await this.supabase
+        .from('works_units')
+        .insert({
+          condominium_id: condominiumId,
+          block_id: blockId,
+          apartament_id: data.apartment_id,
+          status_id: data.status_id,
+          forecast_date: data.forecast_date,
+          description: data.description,
+          has_art_rrt: data.has_art_rrt,
+          observations: data.observations,
+          created_at: new Date(),
+        })
+        .select('id');
+
+    if (workUnitsInsertError) throw new Error(workUnitsInsertError.message);
+
+    const currentWorkUnitInserted = insertedWorkUnits?.[0];
+
+    const promisesDocuments = attachments.map(async (document) => {
+      const fileName = normalizeFileName(document.originalname);
+      const uniqueFileName = `${v4()}-${fileName}`;
+      const { data: fileData, error } = await this.supabase.storage
+        .from('condo')
+        .upload(`uploads/${uniqueFileName}`, document.buffer);
+
+      if (error) throw new Error(error.message);
+
+      const { id, fullPath } = fileData;
+
+      await this.supabase
+        .from('attachments')
+        .insert({
+          related_type: 'unit-works',
+          related_id: currentWorkUnitInserted.id,
+          condominium_id: condominiumId,
+          date: format(new Date(), 'yyyy-MM-dd'),
+          path: fullPath,
+          bucket_name: 'condo',
+          original_name: fileName,
+          screen_origin: 'unit-works',
+          created_at: new Date(),
+          supabase_id: id,
+        })
+        .select('*');
+    });
+
+    await Promise.all(promisesDocuments);
+  }
+
+  async getUnitWorks(token: string, params: any) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+    const { data, error } = await this.supabase
+      .from('works_units')
+      .select('*')
+      .eq('condominium_id', condominiumId)
+      .gte('forecast_date', params.startDate)
+      .lte('forecast_date', params.endDate);
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data, { deep: true });
+  }
 }
