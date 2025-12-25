@@ -25,6 +25,7 @@ import {
   BodyAsset,
   CreateEmployeeBody,
   CreateMaintenanceManagementAssetDTO,
+  CreateTaskDayDto,
   CreateUnitWorkDTO,
   EventSpace,
   InterventionBody,
@@ -2712,5 +2713,71 @@ export class StructureService {
     if (error) throw new Error(error.message);
 
     return camelcaseKeys(data, { deep: true });
+  }
+
+  async getDailyRequestGravityOptions() {
+    const { data, error } = await this.supabase
+      .from('task_day_gravities')
+      .select('id, name');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data, { deep: true });
+  }
+
+  async getDailyRequestStatusOptions() {
+    const { data, error } = await this.supabase
+      .from('task_day_status')
+      .select('id, name');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data, { deep: true });
+  }
+
+  async getDailyRequestResponsibleOptions() {
+    const { data, error } = await this.supabase
+      .from('task_day_responsible')
+      .select('id, name');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data, { deep: true });
+  }
+
+  async getDailyRequest(date: string, token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+    const { data, error } = await this.supabase
+      .from('task_day')
+      .select('*')
+      .eq('date', date)
+      .eq('condominium_id', condominiumId);
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data, { deep: true });
+  }
+
+  async createDailyRequest(dto: CreateTaskDayDto, token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+    const { data, error } = await this.supabase
+      .from('task_day')
+      .insert({
+        name: dto.name,
+        date: dto.date,
+        gravity_id: dto.gravityId,
+        responsible_id: dto.responsibleId,
+        status_id: dto.statusId,
+        observation: dto.observation ?? null,
+        condominium_id: condominiumId,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return data;
   }
 }

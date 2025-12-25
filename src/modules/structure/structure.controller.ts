@@ -18,6 +18,7 @@ import {
   BodyAsset,
   CreateEmployeeBody,
   CreateMaintenanceManagementAssetDTO,
+  CreateTaskDayDto,
   CreateUnitWorkDTO,
   InterventionBody,
   UpdateEmployeeScheduleBody,
@@ -479,5 +480,33 @@ export class StructureController {
   @Get('unit-works/:startDate/:endDate')
   async getUnitWorks(@Param() params: any, @Token() token: string) {
     return this.structureService.getUnitWorks(token, params);
+  }
+
+  @Get('daily-request/options/gravity')
+  async getDailyRequestGravityOptions() {
+    return this.structureService.getDailyRequestGravityOptions();
+  }
+
+  @Get('daily-request/options/status')
+  async getDailyRequestStatusOptions() {
+    return this.structureService.getDailyRequestStatusOptions();
+  }
+
+  @Get('daily-request/options/responsible')
+  async getDailyRequestResponsibleOptions() {
+    return this.structureService.getDailyRequestResponsibleOptions();
+  }
+
+  @Get('daily-request/:date')
+  async getDailyRequest(@Param('date') date: string, @Token() token: string) {
+    return this.structureService.getDailyRequest(date, token);
+  }
+
+  @Post('daily-request')
+  async createDailyRequest(
+    @Body() dto: CreateTaskDayDto,
+    @Token() token: string,
+  ) {
+    return this.structureService.createDailyRequest(dto, token);
   }
 }
