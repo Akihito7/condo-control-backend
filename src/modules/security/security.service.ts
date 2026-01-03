@@ -4,11 +4,13 @@ import { SUPABASE_CLIENT } from '../supabase/supabase.module';
 import { CreateVisitBody, GetVisitorsParams } from './types/dto/security.dto';
 import camelcaseKeys from 'camelcase-keys';
 import { flattenObject } from 'src/utils/flatten-object';
+import { AuthService } from '../auth/auth.service';
 
 @Injectable()
 export class SecurityService {
   constructor(
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
+    private readonly authService: AuthService,
   ) {}
 
   async visitorRegistration(data: CreateVisitBody) {
@@ -112,9 +114,50 @@ export class SecurityService {
     const { data, error } = await this.supabase
       .from('unit_statuses')
       .select('*');
-      
+
     if (error) throw new Error(error.message);
 
+    return camelcaseKeys(data);
+  }
+
+  async createUnit(data: any, token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data: apartaments, error: apartamentsError } = await this.supabase
+      .from('apartment')
+      .select('*')
+      .eq('id', data.apartment_id);
+
+    if (apartamentsError) throw new Error(apartamentsError.message);
+
+    const currentApartament = apartaments?.[0];
+
+    const { error } = await this.supabase.from('units').insert({
+      status_id: data.status_id,
+      condominium_id: condominiumId,
+      apartament_id: currentApartament.id,
+      block_id: currentApartament.block_id,
+      guest: data.guest,
+      contact: data.contact,
+      responsible: data.responsible,
+      created_at: new Date(),
+    });
+
+    if (error) throw new Error(error.message);
+  }
+
+  async getUnits(token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data } = await this.supabase
+      .from('units')
+      .select('*')
+      .eq('condominium_id', condominiumId)
+      .throwOnError();
+    
     return camelcaseKeys(data);
   }
 }
