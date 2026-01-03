@@ -23,4 +23,9 @@ export class SecurityController {
     return this.securityService.doneCheckoutOut(visitId)
   }
 
+  @Get('units/status')
+  async getUnitStatuses(){
+    return this.securityService.getUnitStatuses()
+  }
+
 }
