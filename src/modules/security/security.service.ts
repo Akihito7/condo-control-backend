@@ -157,7 +157,18 @@ export class SecurityService {
       .select('*')
       .eq('condominium_id', condominiumId)
       .throwOnError();
-    
+
     return camelcaseKeys(data);
+  }
+
+  async getBlocks(token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+    const { data } = await this.supabase
+      .from('block')
+      .select('*')
+      .eq('condominium_id', condominiumId);
+
+    return camelcaseKeys(data ?? []);
   }
 }

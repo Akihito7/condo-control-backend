@@ -36,4 +36,9 @@ export class SecurityController {
   async getUnits(@Token() token: string) {
     return this.securityService.getUnits(token);
   }
+
+  @Get('blocks')
+  async getBlocks(@Token() token: string) {
+    return this.securityService.getBlocks(token);
+  }
 }
