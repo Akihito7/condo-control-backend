@@ -20,6 +20,7 @@ import {
   CreateMaintenanceManagementAssetDTO,
   CreateTaskDayDto,
   CreateUnitWorkDTO,
+  GetAttchamentsParams,
   InterventionBody,
   UpdateEmployeeScheduleBody,
 } from './types/dto/structure.dto';
@@ -508,5 +509,25 @@ export class StructureController {
     @Token() token: string,
   ) {
     return this.structureService.createDailyRequest(dto, token);
+  }
+
+  @Get('attachments/:relatedType/:relatedId')
+  async getAttachments(@Param() params: GetAttchamentsParams) {
+    return this.structureService.getAttchaments(params);
+  }
+
+  @Post('attachments/:relatedType/:relatedId')
+  @UseInterceptors(FilesInterceptor('attachment'))
+  async addAttachments(
+    @Param() params: GetAttchamentsParams,
+    @UploadedFiles() attachment: File[],
+    @Token() token: string,
+  ) {
+    return this.structureService.addAttachments(params, attachment, token);
+  }
+
+  @Delete('attachments/:id')
+  async deleteAttachment(@Param('id') id: string) {
+    return this.structureService.deleteAttchament(id);
   }
 }

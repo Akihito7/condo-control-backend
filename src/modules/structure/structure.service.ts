@@ -28,6 +28,7 @@ import {
   CreateTaskDayDto,
   CreateUnitWorkDTO,
   EventSpace,
+  GetAttchamentsParams,
   InterventionBody,
   InterventionPayment,
   UpdateEmployeeScheduleBody,
@@ -2779,5 +2780,68 @@ export class StructureService {
     if (error) throw error;
 
     return data;
+  }
+
+  async getAttchaments(params: GetAttchamentsParams) {
+    const { relatedId, relatedType } = params;
+
+    const { data } = await this.supabase
+      .from('attachments')
+      .select('*')
+      .eq('related_type', relatedType)
+      .eq('related_id', relatedId)
+      .throwOnError();
+
+    return camelcaseKeys(data);
+  }
+
+  async addAttachments(
+    params: GetAttchamentsParams,
+    attchaments: any[],
+    token: string,
+  ) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    await Promise.all(
+      attchaments.map(async (attachment) => {
+        console.log('its me at', attachment)
+        const fileName = normalizeFileName(attachment.originalname);
+        const uniqueFileName = `${v4()}-${fileName}`;
+        const { data: fileData, error } = await this.supabase.storage
+          .from('condo')
+          .upload(`uploads/${uniqueFileName}`, attachment.buffer);
+
+        if (error) throw new Error(error.message);
+
+        const { data: attachamentsInserted, error: insertFileError } =
+          await this.supabase
+            .from('attachments')
+            .insert({
+              related_type: params.relatedType,
+              related_id: params.relatedId,
+              condominium_id: condominiumId,
+              date: format(new Date(), 'yyyy-MM-dd'),
+              path: fileData?.fullPath,
+              bucket_name: 'condo',
+              original_name: attachment.originalname,
+              created_at: new Date(),
+              supabase_id: fileData?.id,
+            })
+            .select('*');
+
+        if (insertFileError) console.log(insertFileError.message);
+
+        return attachamentsInserted?.[0];
+      }),
+
+      
+    );
+
+    console.log('cheguei aqui')
+  }
+
+  async deleteAttchament(attchamentId: string) {
+    await this.supabase.from('attachments').delete().eq('id', attchamentId);
   }
 }

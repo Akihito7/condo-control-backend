@@ -118,14 +118,6 @@ export class CreateUnitWorkDTO {
   observations: string;
   employees: { full_name: string; cpf: string }[];
 }
-
-import {
-  IsDateString,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from 'class-validator';
-
 export class CreateTaskDayDto {
   name: string;
 
@@ -138,4 +130,9 @@ export class CreateTaskDayDto {
   statusId: string;
 
   observation?: string;
+}
+
+export class GetAttchamentsParams {
+  relatedType: string;
+  relatedId: string;
 }
