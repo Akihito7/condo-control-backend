@@ -8,8 +8,8 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UploadedFiles,
-  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { Token } from 'src/decorators/token.decorator';
@@ -20,6 +20,8 @@ import {
   CreateMaintenanceManagementAssetDTO,
   CreateTaskDayDto,
   CreateUnitWorkDTO,
+  DeleteGenericQueryParams,
+  GenericRegisterParams,
   GetAttchamentsParams,
   InterventionBody,
   UpdateEmployeeScheduleBody,
@@ -529,5 +531,21 @@ export class StructureController {
   @Delete('attachments/:id')
   async deleteAttachment(@Param('id') id: string) {
     return this.structureService.deleteAttchament(id);
+  }
+
+  @Put('generic/:tableName/:registerId')
+  async updateGenericRegister(
+    @Param() params: GenericRegisterParams,
+    @Body() data: any,
+  ) {
+    return this.structureService.updateGenericRegister(params, data);
+  }
+
+  @Delete('generic/:tableName/:registerId')
+  async deleteGenericRegister(
+    @Param() params: GenericRegisterParams,
+    @Query() query: DeleteGenericQueryParams,
+  ) {
+    return this.structureService.deleteGenericRegister(params, query);
   }
 }

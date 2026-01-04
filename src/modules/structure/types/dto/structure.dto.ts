@@ -136,3 +136,12 @@ export class GetAttchamentsParams {
   relatedType: string;
   relatedId: string;
 }
+
+export class GenericRegisterParams {
+  tableName: string;
+  registerId: string;
+}
+
+export class DeleteGenericQueryParams {
+  isSoftDelete?: boolean;
+}

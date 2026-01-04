@@ -27,13 +27,14 @@ import {
   CreateMaintenanceManagementAssetDTO,
   CreateTaskDayDto,
   CreateUnitWorkDTO,
+  DeleteGenericQueryParams,
   EventSpace,
+  GenericRegisterParams,
   GetAttchamentsParams,
   InterventionBody,
   InterventionPayment,
   UpdateEmployeeScheduleBody,
 } from './types/dto/structure.dto';
-import { translateComplexDurationToEnglish } from 'src/utils/translation-duration-to-english';
 import { normalizeFileName } from 'src/utils/normalize-file-name';
 import { v4 } from 'uuid';
 
@@ -2805,7 +2806,7 @@ export class StructureService {
 
     await Promise.all(
       attchaments.map(async (attachment) => {
-        console.log('its me at', attachment)
+        console.log('its me at', attachment);
         const fileName = normalizeFileName(attachment.originalname);
         const uniqueFileName = `${v4()}-${fileName}`;
         const { data: fileData, error } = await this.supabase.storage
@@ -2834,14 +2835,48 @@ export class StructureService {
 
         return attachamentsInserted?.[0];
       }),
-
-      
     );
 
-    console.log('cheguei aqui')
   }
 
   async deleteAttchament(attchamentId: string) {
     await this.supabase.from('attachments').delete().eq('id', attchamentId);
+  }
+
+  async updateGenericRegister(params: GenericRegisterParams, data: any) {
+    const { tableName, registerId } = params;
+    const { error } = await this.supabase
+      .from(tableName)
+      .update(data)
+      .eq('id', registerId);
+
+    if (error) throw new Error(error.message);
+  }
+
+  async deleteGenericRegister(
+    params: GenericRegisterParams,
+    query: DeleteGenericQueryParams,
+  ) {
+    const { tableName, registerId } = params;
+
+    if (query.isSoftDelete) {
+      const { error } = await this.supabase
+        .from(tableName)
+        .update({
+          is_deleted: true,
+        })
+        .eq('id', registerId);
+
+      if (error) throw new Error(error.message);
+
+      return;
+    }
+
+    const { error } = await this.supabase
+      .from(tableName)
+      .delete()
+      .eq('id', registerId);
+
+    if (error) throw new Error(error.message);
   }
 }
