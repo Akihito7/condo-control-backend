@@ -2836,7 +2836,6 @@ export class StructureService {
         return attachamentsInserted?.[0];
       }),
     );
-
   }
 
   async deleteAttchament(attchamentId: string) {
@@ -2844,6 +2843,7 @@ export class StructureService {
   }
 
   async updateGenericRegister(params: GenericRegisterParams, data: any) {
+    console.log("entrei no update", params, data)
     const { tableName, registerId } = params;
     const { error } = await this.supabase
       .from(tableName)
@@ -2878,5 +2878,61 @@ export class StructureService {
       .eq('id', registerId);
 
     if (error) throw new Error(error.message);
+  }
+
+  async getEmplooyesByWorkId(workId: string) {
+    console.log('oi amor');
+    const { data, error } = await this.supabase
+      .from('work_units_relation_employees')
+      .select('*')
+      .eq('work_unit_id', workId);
+    if (error) throw new Error(error.message);
+
+    console.log('oi', data);
+
+    const employeesIds = data.map((employee) => employee.work_unit_employee_id);
+
+    const { data: emplooyesInfo, error: employeesInfoError } =
+      await this.supabase
+        .from('works_unit_employees')
+        .select('*')
+        .in('id', employeesIds);
+
+    if (employeesInfoError) throw new Error(employeesInfoError.message);
+
+    return emplooyesInfo;
+  }
+
+  async addEmployeeUnitWorks(params: any, data: any) {
+    console.log('params', params, data);
+
+    const { data: idsInserted, error: idsInsertedError } = await this.supabase
+      .from('works_unit_employees')
+      .insert({
+        full_name: data.fullName,
+        cpf: data.cpf,
+      })
+      .select('id');
+    if (idsInsertedError) throw new Error(idsInsertedError.message);
+
+    const currentEmployee = idsInserted?.[0];
+
+    const { error } = await this.supabase.from('work_units_relation_employees').insert({
+      work_unit_id: params.workId,
+      work_unit_employee_id: currentEmployee.id,
+    });
+
+    if (error) throw new Error(error.message);
+  }
+
+  async deleteEmplooyeUnitWorks(employeeId: string) {
+    await this.supabase
+      .from('work_units_relation_employees')
+      .delete()
+      .eq('work_unit_employee_id', employeeId);
+    await this.supabase
+      .from('works_unit_employees')
+      .delete()
+      .eq('id', employeeId);
   }
 }

@@ -548,4 +548,19 @@ export class StructureController {
   ) {
     return this.structureService.deleteGenericRegister(params, query);
   }
+
+  @Get('unit-works/form/:workId/emplooyes')
+  async getEmplooyesByWorkId(@Param('workId') workId: string) {
+    return this.structureService.getEmplooyesByWorkId(workId);
+  }
+
+  @Post('unit-works/form/:workId/employees')
+  async addEmployeeUnitWorks(@Param() params: any, @Body() data: any) {
+    return this.structureService.addEmployeeUnitWorks(params, data);
+  }
+
+  @Delete('unit-works/form/:employeeId')
+  async deleteEmployeeById(@Param() params: any) {
+    return this.structureService.deleteEmplooyeUnitWorks(params.employeeId);
+  }
 }
