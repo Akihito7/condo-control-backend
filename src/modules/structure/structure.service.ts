@@ -2700,6 +2700,10 @@ export class StructureService {
     });
 
     await Promise.all(promisesDocuments);
+
+    return {
+      unitWorkId: currentWorkUnitInserted.id,
+    };
   }
 
   async getUnitWorks(token: string, params: any) {
@@ -2843,7 +2847,7 @@ export class StructureService {
   }
 
   async updateGenericRegister(params: GenericRegisterParams, data: any) {
-    console.log("entrei no update", params, data)
+    console.log('entrei no update', params, data);
     const { tableName, registerId } = params;
     const { error } = await this.supabase
       .from(tableName)
@@ -2917,10 +2921,12 @@ export class StructureService {
 
     const currentEmployee = idsInserted?.[0];
 
-    const { error } = await this.supabase.from('work_units_relation_employees').insert({
-      work_unit_id: params.workId,
-      work_unit_employee_id: currentEmployee.id,
-    });
+    const { error } = await this.supabase
+      .from('work_units_relation_employees')
+      .insert({
+        work_unit_id: params.workId,
+        work_unit_employee_id: currentEmployee.id,
+      });
 
     if (error) throw new Error(error.message);
   }
