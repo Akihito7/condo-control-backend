@@ -1,37 +1,54 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
-import { CommunicationService } from "./communication.service";
-import { BodyCreateEvent, BodyOpeningCalls, ParamOpeningCalls } from "./types/dto/communication.dto";
-import { FilesInterceptor } from "@nestjs/platform-express";
-import { AuthGuard } from "src/guards/auth.guard";
-import { Token } from "src/decorators/token.decorator";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { CommunicationService } from './communication.service';
+import {
+  BodyCreateEvent,
+  BodyOpeningCalls,
+  ParamOpeningCalls,
+  ResidentRequestBody,
+} from './types/dto/communication.dto';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from 'src/guards/auth.guard';
+import { Token } from 'src/decorators/token.decorator';
 
 @Controller('communication')
 export class CommunicationController {
-  constructor(private readonly communicationSerivce: CommunicationService) { }
+  constructor(private readonly communicationSerivce: CommunicationService) {}
 
   @Get('assembly-virtual/polls/vote-options/:pollId')
   async getOptionsVoteByPoll(@Param('pollId') pollId: string) {
-    return this.communicationSerivce.getOptionsVoteByPoll(pollId)
+    return this.communicationSerivce.getOptionsVoteByPoll(pollId);
   }
 
   @Get('opening-calls/options/status')
   async getOptionsStatusOpeningCalls() {
-    return this.communicationSerivce.getOptionsStatusOpeningCalls()
+    return this.communicationSerivce.getOptionsStatusOpeningCalls();
   }
 
   @Get('opening-calls/options/issues')
   async getOptionsIssuesOpeningCalls() {
-    return this.communicationSerivce.getOptionsIssuesOpeningCalls()
+    return this.communicationSerivce.getOptionsIssuesOpeningCalls();
   }
 
   @Get('opening-calls/cards/:condominiumId/:startDate/:endDate')
   async getCardsOpeningOfCalls(@Param() param: ParamOpeningCalls) {
-    return this.communicationSerivce.getCardsOpeningOfCalls(param)
+    return this.communicationSerivce.getCardsOpeningOfCalls(param);
   }
 
   @Get('opening-calls/records/:condominiumId/:startDate/:endDate')
   async getRecordsOpeningOfCalls(@Param() param: ParamOpeningCalls) {
-    return this.communicationSerivce.getRecordsOpeningOfCalls(param)
+    return this.communicationSerivce.getRecordsOpeningOfCalls(param);
   }
 
   @Post('opening-calls/records/create/:condominiumId')
@@ -41,23 +58,27 @@ export class CommunicationController {
     @Body() body: BodyOpeningCalls,
     @UploadedFiles() attachment: any,
   ) {
-    return this.communicationSerivce.createOpeningCallRecord(condominiumId, body, attachment)
+    return this.communicationSerivce.createOpeningCallRecord(
+      condominiumId,
+      body,
+      attachment,
+    );
   }
 
   @Put('opening-calls/records/update/:recordId')
   async updateOpeningCallRecord(
-    @Param("recordId") recordId: string,
-    @Body() body: Omit<BodyOpeningCalls, 'date'>
+    @Param('recordId') recordId: string,
+    @Body() body: Omit<BodyOpeningCalls, 'date'>,
   ) {
-
-    return this.communicationSerivce.updateOpeningCallRecord(recordId, body)
+    return this.communicationSerivce.updateOpeningCallRecord(recordId, body);
   }
 
   @Post('opening-calls/attachment/donwload')
   async openingCallsAttachmentDownload(@Body() body: any) {
-    return this.communicationSerivce.openingCallsAttachmentDownload(body.fullPath)
+    return this.communicationSerivce.openingCallsAttachmentDownload(
+      body.fullPath,
+    );
   }
-
 
   //mudar para o modulo correto depois
   @Get('employees')
@@ -65,24 +86,29 @@ export class CommunicationController {
     return this.communicationSerivce.getEmployees();
   }
 
-  @Post("opening-calls/attachment/upload")
+  @Post('opening-calls/attachment/upload')
   @UseInterceptors(FilesInterceptor('attachment'))
   async createAttachmentOpeningCalls(
     @Body() data: any,
-    @UploadedFiles() attachment: any
+    @UploadedFiles() attachment: any,
   ) {
-    return this.communicationSerivce.createAttachmentOpeningCalls(data.openingRecordId, data.condominiumId, attachment)
+    return this.communicationSerivce.createAttachmentOpeningCalls(
+      data.openingRecordId,
+      data.condominiumId,
+      attachment,
+    );
   }
 
-  @Delete("opening-calls/attachment/delete/:attachmentId")
-  async deleteAttachmentOpeningCall(@Param('attachmentId') attachmentId: string) {
-    return this.communicationSerivce.deleteAttachmentOpeningCall(attachmentId)
+  @Delete('opening-calls/attachment/delete/:attachmentId')
+  async deleteAttachmentOpeningCall(
+    @Param('attachmentId') attachmentId: string,
+  ) {
+    return this.communicationSerivce.deleteAttachmentOpeningCall(attachmentId);
   }
 
-
-  @Delete("opening-calls/records/delete/:recordId")
+  @Delete('opening-calls/records/delete/:recordId')
   async deleteOpeningCallsRecord(@Param('recordId') recordId: string) {
-    return this.communicationSerivce.deleteOpeningCallsRecord(recordId)
+    return this.communicationSerivce.deleteOpeningCallsRecord(recordId);
   }
 
   @Get('delivery/status-options')
@@ -91,20 +117,24 @@ export class CommunicationController {
   }
 
   @Get('apartaments/:condominiumId')
-  async getApartamentsByCondominiumId(@Param("condominiumId") condominiumId: string) {
-    return this.communicationSerivce.getApartamentsByCondominiumId(condominiumId)
+  async getApartamentsByCondominiumId(
+    @Param('condominiumId') condominiumId: string,
+  ) {
+    return this.communicationSerivce.getApartamentsByCondominiumId(
+      condominiumId,
+    );
   }
 
   @Get('deliveries/:condominiumId/:startDate/:endDate')
   async getDeliveriesByCondominiumId(@Param() params: any) {
-    return this.communicationSerivce.getDeliveriesByCondominiumId(params)
+    return this.communicationSerivce.getDeliveriesByCondominiumId(params);
   }
 
   @Post('delivery/create')
   @UseInterceptors(FilesInterceptor('attachment'))
   async createDelivery(
     @Body() body: FormData,
-    @UploadedFiles() attachment: any
+    @UploadedFiles() attachment: any,
   ) {
     return this.communicationSerivce.createDelivery(body, attachment);
   }
@@ -114,29 +144,36 @@ export class CommunicationController {
   async updateDelivery(
     @Param('deliveryId') deliveryId: string,
     @Body() body: FormData,
-    @UploadedFiles() attachment: any
+    @UploadedFiles() attachment: any,
   ) {
-    return this.communicationSerivce.updateDelivery(deliveryId, body, attachment);
+    return this.communicationSerivce.updateDelivery(
+      deliveryId,
+      body,
+      attachment,
+    );
   }
 
   @Patch('delivery/mark-as-delivered/:id')
   async markAsDelivered(@Param('id') deliveryId) {
-    return this.communicationSerivce.markAsDelivered(deliveryId)
+    return this.communicationSerivce.markAsDelivered(deliveryId);
   }
 
   @Delete('delivery/delete/:deliveryId')
-  async deleteDelivery(@Param("deliveryId") deliveryId: string) {
-    return this.communicationSerivce.deleteDelivery(deliveryId)
+  async deleteDelivery(@Param('deliveryId') deliveryId: string) {
+    return this.communicationSerivce.deleteDelivery(deliveryId);
   }
 
   @UseGuards(AuthGuard)
   @Get('assembly-virtual/polls/:condominiumId/:date')
-  async getAssemblyVirtualPolls(@Param() filters: {
-    date: string,
-    condominiumId: string,
-  },
-    @Token() token) {
-    return this.communicationSerivce.getAssemblyVirtualPolls(filters, token)
+  async getAssemblyVirtualPolls(
+    @Param()
+    filters: {
+      date: string;
+      condominiumId: string;
+    },
+    @Token() token,
+  ) {
+    return this.communicationSerivce.getAssemblyVirtualPolls(filters, token);
   }
 
   /*   @UseGuards(AuthGuard)
@@ -153,45 +190,55 @@ export class CommunicationController {
   @Post('assembly-virtual/polls/vote/:pollId')
   async createVoteAssemblyVirtualPoll(
     @Param('pollId') pollId: string,
-    @Body() body: {
+    @Body()
+    body: {
       choice: string;
     },
     @Token() token,
   ) {
-    return this.communicationSerivce.createVoteAssemblyVirtualPoll(pollId, body, token)
+    return this.communicationSerivce.createVoteAssemblyVirtualPoll(
+      pollId,
+      body,
+      token,
+    );
   }
 
   @Patch('assembly-virtual/polls/vote/:voteId')
   async updateVoteAssemblyVirtualPoll(
     @Param('voteId') voteId: string,
-    @Body() body: {
+    @Body()
+    body: {
       choice: string;
     },
   ) {
     const { choice } = body;
-    return this.communicationSerivce.updateVoteAssemblyVirtualPoll({ voteId, choice })
+    return this.communicationSerivce.updateVoteAssemblyVirtualPoll({
+      voteId,
+      choice,
+    });
   }
 
   @Post('assembly-virtual/polls/create')
-  async createAssemblyVirtualPoll(
-    @Body() body: any,
-    @Token() token: string
-  ) {
-    return this.communicationSerivce.createAssemblyVirtualPoll(body, token)
+  async createAssemblyVirtualPoll(@Body() body: any, @Token() token: string) {
+    return this.communicationSerivce.createAssemblyVirtualPoll(body, token);
   }
 
   @Put('assembly-virtual/polls/update/:pollId')
   async updateAssemblyVirtualPoll(
-    @Param("pollId") pollId: string,
+    @Param('pollId') pollId: string,
     @Body() body: any,
-    @Token() token: string
+    @Token() token: string,
   ) {
-    return this.communicationSerivce.updateAssemblyVirtualPoll(pollId, body, token)
+    return this.communicationSerivce.updateAssemblyVirtualPoll(
+      pollId,
+      body,
+      token,
+    );
   }
 
   @Delete('assembly-virtual/polls/delete/:pollId')
-  async deleteAssemblyVirtualPoll(@Param("pollId") pollId: string,) {
-    return this.communicationSerivce.deleteAssemblyVirtualPoll(pollId)
+  async deleteAssemblyVirtualPoll(@Param('pollId') pollId: string) {
+    return this.communicationSerivce.deleteAssemblyVirtualPoll(pollId);
   }
 
   @Get('schedule/:condominiumId/:date')
@@ -199,27 +246,29 @@ export class CommunicationController {
     const { condominiumId, date } = params;
     return this.communicationSerivce.getScheduleCondomnium({
       condominiumId,
-      date
-    })
+      date,
+    });
   }
 
   @Post('schedule')
   async createEventCondominium(
     @Token() token: string,
-    @Body() body: BodyCreateEvent) {
+    @Body() body: BodyCreateEvent,
+  ) {
     return this.communicationSerivce.createEventCondominium(token, body);
   }
 
   @Put('schedule/:id')
   async updateEventCondominium(
     @Param('id') eventId: string,
-    @Body() body: BodyCreateEvent) {
-    return this.communicationSerivce.updateEventCondominium(eventId, body)
+    @Body() body: BodyCreateEvent,
+  ) {
+    return this.communicationSerivce.updateEventCondominium(eventId, body);
   }
 
   @Delete('schedule/:id')
   async deleteEventCondominium(@Param('id') eventId: string) {
-    return this.communicationSerivce.deleteEventCondominium(eventId)
+    return this.communicationSerivce.deleteEventCondominium(eventId);
   }
 
   @Post('delivery/mark-as-delivery/send-code/:deliveryId')
@@ -229,6 +278,30 @@ export class CommunicationController {
 
   @Put('delivery/mark-as-delivered/confirmation-code/:code')
   async confirmationDelivery(@Param('code') code: string) {
-    return this.communicationSerivce.confirmationDelivery(code)
+    return this.communicationSerivce.confirmationDelivery(code);
+  }
+
+  @Post('resident-request')
+  @UseInterceptors(FilesInterceptor('attachments'))
+  async createResidentRequest(
+    @Body() data: ResidentRequestBody,
+    @UploadedFiles() attachments: any[],
+    @Token() token: string,
+  ) {
+    return this.communicationSerivce.createResidentRequest(
+      data,
+      attachments,
+      token,
+    );
+  }
+
+  @Get('resident-request/options/gravity')
+  async getGravities() {
+    return this.communicationSerivce.getGravities();
+  }
+
+  @Get('resident-request/options/status')
+  async getCallStatuses() {
+    return this.communicationSerivce.getCallStatuses();
   }
 }

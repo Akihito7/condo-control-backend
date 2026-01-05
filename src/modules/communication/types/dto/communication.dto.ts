@@ -1,4 +1,11 @@
-import { IsDateString, IsNotEmpty, IsNumber, IsString } from "class-validator";
+import {
+  IsDateString,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class ParamOpeningCalls {
   @IsNotEmpty()
@@ -37,11 +44,41 @@ export class BodyOpeningCalls {
 }
 
 export class BodyCreateEvent {
- title: string;
+  title: string;
   type: string;
   location: string;
   description: string;
   startTime: string;
   endTime: string;
   date: string;
+}
+
+export class ResidentRequestBody {
+  @IsInt()
+  @IsNotEmpty()
+  apartament_id: number;
+
+  @IsString()
+  @IsNotEmpty()
+  description: string;
+
+  @IsInt()
+  @IsNotEmpty()
+  status_id: number;
+
+  @IsString()
+  @IsOptional()
+  observation?: string;
+
+  @IsDateString()
+  @IsNotEmpty()
+  start_date: string;
+
+  @IsDateString()
+  @IsNotEmpty()
+  end_date: string;
+
+  @IsInt()
+  @IsNotEmpty()
+  gravity_id: number;
 }
