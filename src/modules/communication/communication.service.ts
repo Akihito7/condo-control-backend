@@ -4,6 +4,7 @@ import { SUPABASE_CLIENT } from '../supabase/supabase.module';
 import {
   BodyCreateEvent,
   BodyOpeningCalls,
+  GetResidentRequestParams,
   ParamOpeningCalls,
   ResidentRequestBody,
 } from './types/dto/communication.dto';
@@ -1261,6 +1262,28 @@ export class CommunicationService {
     const { data, error } = await this.supabase
       .from('resident_call_statuses')
       .select('*');
+
+    if (error) throw new Error(error.message);
+
+    return camelcaseKeys(data, { deep: true });
+  }
+
+  async getResidentRequest(params: GetResidentRequestParams, token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { startDate, endDate } = params;
+
+    const startDateFormatted = `${startDate} 00:00:00`;
+
+    const endDateFormatted = `${endDate} 23:59:59`;
+
+    const { data, error } = await this.supabase
+      .from('resident_calls')
+      .select('*')
+      .eq('condominium_id', condominiumId)
+      .gte('start_date', startDateFormatted)
+      .lte('end_date', endDateFormatted);
 
     if (error) throw new Error(error.message);
 

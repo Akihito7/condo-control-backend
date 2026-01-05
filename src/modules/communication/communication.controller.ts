@@ -15,6 +15,7 @@ import { CommunicationService } from './communication.service';
 import {
   BodyCreateEvent,
   BodyOpeningCalls,
+  GetResidentRequestParams,
   ParamOpeningCalls,
   ResidentRequestBody,
 } from './types/dto/communication.dto';
@@ -303,5 +304,14 @@ export class CommunicationController {
   @Get('resident-request/options/status')
   async getCallStatuses() {
     return this.communicationSerivce.getCallStatuses();
+  }
+
+  @Get('resident-request/:startDate/:endDate')
+  async getResidentRequest(
+    @Param() params: GetResidentRequestParams,
+    @Token() token: string
+  ) {
+    console.log('bati aqui')
+    return this.communicationSerivce.getResidentRequest(params, token)
   }
 }

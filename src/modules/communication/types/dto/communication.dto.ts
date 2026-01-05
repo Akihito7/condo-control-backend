@@ -82,3 +82,8 @@ export class ResidentRequestBody {
   @IsNotEmpty()
   gravity_id: number;
 }
+
+export class GetResidentRequestParams {
+  startDate: string;
+  endDate: string;
+}
