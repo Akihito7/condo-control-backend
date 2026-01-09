@@ -2709,12 +2709,16 @@ export class StructureService {
   async getUnitWorks(token: string, params: any) {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
+
+    const { startDate, endDate } = getFullMonthInterval(params.startDate);
+
     const { data, error } = await this.supabase
       .from('works_units')
       .select('*')
       .eq('condominium_id', condominiumId)
-      .gte('forecast_date', params.startDate)
-      .lte('forecast_date', params.endDate);
+      .gte('forecast_date', startDate)
+      .lte('forecast_date', endDate)
+      .order('forecast_date');
 
     if (error) throw new Error(error.message);
 
