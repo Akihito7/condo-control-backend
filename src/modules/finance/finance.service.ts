@@ -787,9 +787,10 @@ export class FinanceService {
 
   async getProjectionCards(data: GetProjectionParams) {
     const currentDate = new Date()
-    const dateSubtractOneMonth = format(currentDate, "yyyy-MM-dd");
+    const currentDateFormatted = format(currentDate, "yyyy-MM-dd");
+
     const dateBetweenCurrentDate = differenceInCalendarMonths(new Date(data.date), currentDate)
-    const { startDate, endDate } = getFullMonthInterval(dateSubtractOneMonth);
+    const { startDate, endDate } = getFullMonthInterval(currentDateFormatted);
     const INCOME_TYPE_ID = 4;
     const EXPENSE_TYPE_ID = 6;
 
