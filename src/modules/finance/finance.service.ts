@@ -419,6 +419,7 @@ export class FinanceService {
     const incomeTarget = incomes?.[0]?.income_target ?? undefined
 
     if (totalIncomeFromCondiminiumFinances) {
+      console.log("from total condominium finances", accumulatedBalance)
       return {
         totalIncome: totalIncomeFromCondiminiumFinances,
         incomeTarget: isSameMonth ? incomeTarget : undefined,
@@ -452,6 +453,8 @@ export class FinanceService {
       }
       return total
     }, 0)
+
+     console.log("from total registers", accumulatedBalance)
 
     return {
       totalIncome: totalIncomeFromRegisters,
