@@ -357,7 +357,7 @@ export class FinanceService {
 
     let start = new Date(startDateFormatted);
     let end = new Date(endDate);
-    let current = new Date(start.getFullYear(), 0, 1);
+    let current = new Date(start.getFullYear() - 2, 0, 1);
     end = new Date(end.getFullYear(), 11, 31);
 
     while (current <= end) {
