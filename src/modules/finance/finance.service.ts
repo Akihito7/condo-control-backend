@@ -337,6 +337,8 @@ export class FinanceService {
     startDate,
     endDate
   }: any) {
+
+    console.log('start', startDate, 'end date', endDate)
     const [year, monthStartDate] = String(startDate).split('-');
     const [, monthEndDate] = String(endDate).split('-');
     const startDateFormatted = `${year}-${monthStartDate}-01`
