@@ -335,13 +335,16 @@ export class FinanceService {
   async getRevenueTotal({
     condominiumId,
     startDate,
-    endDate
+    endDate,
+    isProjection = false
   }: any) {
 
     console.log('start', startDate, 'end date', endDate)
-    const [year, monthStartDate] = String(startDate).split('-');
+    let [year, monthStartDate] = String(startDate).split('-');
+
+    year = isProjection ? '2024' : year;
     const [, monthEndDate] = String(endDate).split('-');
-    const startDateFormatted = `2024-${monthStartDate}-01`
+    const startDateFormatted = `${year}-${monthStartDate}-01`
     const isSameMonth = monthStartDate === monthEndDate;
 
     const { data: incomes } = await this.supabase
@@ -357,7 +360,7 @@ export class FinanceService {
 
     let start = new Date(startDateFormatted);
     let end = new Date(endDate);
-    let current = new Date(start.getFullYear() - 2, 0, 1);
+    let current = isProjection ? new Date(start.getFullYear() - 2, 0, 1) : new Date(start.getFullYear(), 0, 1);
     end = new Date(end.getFullYear(), 11, 31);
 
     while (current <= end) {
@@ -818,7 +821,8 @@ export class FinanceService {
     const { accumulatedBalance } = await this.getRevenueTotal({
       condominiumId: data.condominiumId,
       startDate,
-      endDate
+      endDate,
+      isProjection : true
     })
     const finalRecordFormmated: any[] = [];
 
