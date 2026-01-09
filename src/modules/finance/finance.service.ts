@@ -341,7 +341,7 @@ export class FinanceService {
     console.log('start', startDate, 'end date', endDate)
     const [year, monthStartDate] = String(startDate).split('-');
     const [, monthEndDate] = String(endDate).split('-');
-    const startDateFormatted = `${year}-${monthStartDate}-01`
+    const startDateFormatted = `2024-${monthStartDate}-01`
     const isSameMonth = monthStartDate === monthEndDate;
 
     const { data: incomes } = await this.supabase
