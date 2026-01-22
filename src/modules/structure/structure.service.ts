@@ -2660,6 +2660,7 @@ export class StructureService {
           apartament_id: data.apartment_id,
           status_id: data.status_id,
           forecast_date: data.forecast_date,
+          forecast_end_date: data.forecast_end_date,
           description: data.description,
           has_art_rrt: data.has_art_rrt,
           observations: data.observations,
@@ -2710,14 +2711,10 @@ export class StructureService {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
 
-    const { startDate, endDate } = getFullMonthInterval(params.startDate);
-
     const { data, error } = await this.supabase
       .from('works_units')
       .select('*')
       .eq('condominium_id', condominiumId)
-      .gte('forecast_date', startDate)
-      .lte('forecast_date', endDate)
       .order('forecast_date');
 
     if (error) throw new Error(error.message);

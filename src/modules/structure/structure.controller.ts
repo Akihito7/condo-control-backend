@@ -480,7 +480,7 @@ export class StructureController {
     return this.structureService.createUnitWork({ token, data, attachments });
   }
 
-  @Get('unit-works/:startDate')
+  @Get('unit-works')
   async getUnitWorks(@Param() params: any, @Token() token: string) {
     return this.structureService.getUnitWorks(token, params);
   }

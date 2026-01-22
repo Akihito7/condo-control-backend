@@ -113,6 +113,7 @@ export class CreateUnitWorkDTO {
   apartment_id: string;
   status_id: string;
   forecast_date: string;
+  forecast_end_date: string;
   description: string;
   has_art_rrt: boolean;
   observations: string;
