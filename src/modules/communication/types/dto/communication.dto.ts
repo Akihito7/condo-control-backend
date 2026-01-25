@@ -31,7 +31,7 @@ export class BodyOpeningCalls {
   description: string;
   @IsNotEmpty()
   @IsNumber()
-  responsibleId: number;
+  responsibleName: string;
   @IsNotEmpty()
   @IsNumber()
   statusId: number;

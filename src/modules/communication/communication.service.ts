@@ -175,7 +175,7 @@ export class CommunicationService {
       date,
       description,
       issueTypeId,
-      responsibleId,
+      responsibleName,
       statusId,
       resolvedDate,
       startedDate,
@@ -188,7 +188,7 @@ export class CommunicationService {
         date,
         issue_type_id: issueTypeId,
         description,
-        responsible_user_id: responsibleId,
+        responsible_name: responsibleName,
         started_at: startedDate,
         resolved_at: resolvedDate,
         status_id: statusId,
@@ -384,7 +384,7 @@ export class CommunicationService {
     const {
       description,
       issueTypeId,
-      responsibleId,
+      responsibleName,
       statusId,
       resolvedDate,
       startedDate,
@@ -394,7 +394,7 @@ export class CommunicationService {
       .from('calls')
       .update({
         description,
-        responsible_user_id: responsibleId,
+        responsible_name: responsibleName,
         issue_type_id: issueTypeId,
         started_at: startedDate,
         resolved_at: resolvedDate,
