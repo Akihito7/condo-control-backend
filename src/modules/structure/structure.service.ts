@@ -2775,7 +2775,7 @@ export class StructureService {
         name: dto.name,
         date: dto.date,
         gravity_id: dto.gravityId,
-        responsible_id: dto.responsibleId,
+        responsible_name: dto.responsibleName,
         status_id: dto.statusId,
         observation: dto.observation ?? null,
         condominium_id: condominiumId,

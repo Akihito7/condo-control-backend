@@ -126,7 +126,7 @@ export class CreateTaskDayDto {
 
   gravityId: string;
 
-  responsibleId: string;
+  responsibleName: string;
 
   statusId: string;
 
