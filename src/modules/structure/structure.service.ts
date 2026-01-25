@@ -2942,4 +2942,20 @@ export class StructureService {
       .delete()
       .eq('id', employeeId);
   }
+
+  async getAssetsMaintenancesDetails(token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { data, error } = await this.supabase.rpc(
+      'get_assets_report_by_condominium',
+      {
+        p_condominium_id: condominiumId,
+      },
+    );
+
+    if (error) throw new Error(error.message);
+
+    return data;
+  }
 }

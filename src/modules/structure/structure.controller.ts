@@ -563,4 +563,9 @@ export class StructureController {
   async deleteEmployeeById(@Param() params: any) {
     return this.structureService.deleteEmplooyeUnitWorks(params.employeeId);
   }
+
+  @Get('assets-maintenances/details')
+  async getAssetsMaintenancesDetails(@Token() token: string) {
+    return this.structureService.getAssetsMaintenancesDetails(token);
+  }
 }
