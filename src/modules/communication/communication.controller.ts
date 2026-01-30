@@ -311,7 +311,6 @@ export class CommunicationController {
     @Param() params: GetResidentRequestParams,
     @Token() token: string
   ) {
-    console.log('bati aqui')
     return this.communicationSerivce.getResidentRequest(params, token)
   }
 }

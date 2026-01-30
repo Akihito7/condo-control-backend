@@ -1205,10 +1205,12 @@ export class CommunicationService {
 
     const { condominiumId } = await this.authService.me(userId);
 
+    const { attachments: _, ...rest } = data;
+
     const { data: dataInserted, error } = await this.supabase
       .from('resident_calls')
       .insert({
-        ...data,
+        ...rest,
         condominium_id: condominiumId,
       })
       .select('id');
@@ -1279,12 +1281,11 @@ export class CommunicationService {
     const endDateFormatted = `${endDate} 23:59:59`;
 
     const { data, error } = await this.supabase
-      .from('resident_calls')
+      .from('resident_calls_with_date')
       .select('*')
       .eq('condominium_id', condominiumId)
-      .gte('start_date', startDateFormatted)
-      .lte('end_date', endDateFormatted);
-
+      .gte('effective_date', startDateFormatted)
+      .lte('effective_date', endDateFormatted);
     if (error) throw new Error(error.message);
 
     return camelcaseKeys(data, { deep: true });

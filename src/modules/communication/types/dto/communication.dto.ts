@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsDateString,
   IsInt,
   IsNotEmpty,
@@ -81,6 +82,9 @@ export class ResidentRequestBody {
   @IsInt()
   @IsNotEmpty()
   gravity_id: number;
+
+  @IsArray()
+  attachments: any[];
 }
 
 export class GetResidentRequestParams {
