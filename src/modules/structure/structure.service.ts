@@ -2292,7 +2292,8 @@ export class StructureService {
       .eq('type_id', 1)
       .not('asset_maintenance_id', 'is', null)
       .gte('planned_start', startDate)
-      .lte('planned_start', endDate);
+      .lte('planned_start', endDate)
+      .order('planned_start', { ascending : true})
 
     if (error) throw new Error(error.message);
 
