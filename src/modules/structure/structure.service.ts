@@ -17,7 +17,7 @@ import {
   startOfYear,
   endOfYear,
 } from 'date-fns';
-import { bn, id, ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale';
 import { getFullMonthInterval } from 'src/utils/get-full-month-interval';
 import { flattenObject } from 'src/utils/flatten-object';
 import { FinanceService } from '../finance/finance.service';
@@ -1292,7 +1292,8 @@ export class StructureService {
         asset_reports (*)
         `,
       )
-      .eq('condominium_id', condominiumId);
+      .eq('condominium_id', condominiumId)
+      .order('installation_date', { ascending: true });
 
     if (error) {
       throw new Error(error.message);
@@ -2144,6 +2145,43 @@ export class StructureService {
     return camelcaseKeys(types?.[0]);
   }
 
+  async updateMaintenanceManagementAsset({
+    assetId,
+    data,
+  }: {
+    assetId: string;
+    data: CreateMaintenanceManagementAssetDTO;
+  }) {
+    const {
+      name,
+      code,
+      frequency,
+      installationDate,
+      lifespan,
+      supplier,
+      type,
+      contact,
+    } = data;
+
+    const estimatedUsefulLife = `${lifespan} year`;
+
+    const { error } = await this.supabase
+      .from('assets_maintenance')
+      .update({
+        name,
+        type,
+        contact,
+        supplier,
+        installation_date: new Date(installationDate).toISOString(),
+        estimated_useful_life: estimatedUsefulLife,
+        maintenance_frequency: frequency,
+        code,
+      })
+      .eq('id', assetId);
+
+    if (error) throw new Error(error.message);
+  }
+
   async getMaintenanceManagementAssetsTypes(token: string) {
     const { userId } = await this.authService.decodeToken(token);
     const { condominiumId } = await this.authService.me(userId);
@@ -2293,7 +2331,7 @@ export class StructureService {
       .not('asset_maintenance_id', 'is', null)
       .gte('planned_start', startDate)
       .lte('planned_start', endDate)
-      .order('planned_start', { ascending : true})
+      .order('planned_start', { ascending: true });
 
     if (error) throw new Error(error.message);
 

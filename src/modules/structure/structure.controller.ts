@@ -27,6 +27,7 @@ import {
   UpdateEmployeeScheduleBody,
 } from './types/dto/structure.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { stringToBytes } from 'node_modules/uuid/dist/esm-browser/v35';
 
 @Controller('structure')
 export class StructureController {
@@ -368,6 +369,17 @@ export class StructureController {
       token,
       data: body,
       attachments,
+    });
+  }
+
+  @Put('maintenance-management/assets/update/:assetId')
+  async updateMaintenanceManagementAsset(
+    @Param('assetId') assetId: string,
+    @Body() body: CreateMaintenanceManagementAssetDTO,
+  ) {
+    return this.structureService.updateMaintenanceManagementAsset({
+      assetId,
+      data: body,
     });
   }
 
