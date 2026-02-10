@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put } from '@nestjs/common';
 import { CreateVisitBody, GetVisitorsParams } from './types/dto/security.dto';
 import { SecurityService } from './security.service';
 import { Token } from 'src/decorators/token.decorator';
@@ -30,6 +30,11 @@ export class SecurityController {
   @Post('units')
   async createUnit(@Body() data: any, @Token() token: string) {
     return this.securityService.createUnit(data, token);
+  }
+
+  @Put('units/:unitId')
+  async updateUnit(@Param('unitId') unitId: string, @Body() data: any) {
+    return this.securityService.updateUnit(unitId, data);
   }
 
   @Get('units')
