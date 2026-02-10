@@ -1292,8 +1292,7 @@ export class StructureService {
         asset_reports (*)
         `,
       )
-      .eq('condominium_id', condominiumId)
-      .order('installation_date', { ascending: true });
+      .eq('condominium_id', condominiumId);
 
     if (error) {
       throw new Error(error.message);
@@ -2280,7 +2279,8 @@ export class StructureService {
       .from('assets_maintenance')
       .select('*')
       .eq('condominium_id', condominiumId)
-      .eq('is_deleted', false);
+      .eq('is_deleted', false)
+      .order('installation_date', { ascending: false });
 
     if (error) throw new Error(error.message);
 
