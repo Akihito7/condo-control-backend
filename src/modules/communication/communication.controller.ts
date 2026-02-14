@@ -309,8 +309,13 @@ export class CommunicationController {
   @Get('resident-request/:startDate/:endDate')
   async getResidentRequest(
     @Param() params: GetResidentRequestParams,
-    @Token() token: string
+    @Token() token: string,
   ) {
-    return this.communicationSerivce.getResidentRequest(params, token)
+    return this.communicationSerivce.getResidentRequest(params, token);
+  }
+
+  @Get('resident-request/cards/:startDate/:endDate')
+  async getResidentRequestsCards(@Param() params: any, @Token() token: string) {
+    return this.communicationSerivce.getResidentRequestsCards(params, token);
   }
 }

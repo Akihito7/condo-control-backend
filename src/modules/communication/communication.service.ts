@@ -1291,6 +1291,73 @@ export class CommunicationService {
     return camelcaseKeys(data, { deep: true });
   }
 
+  async getResidentRequestsCards(params: any, token: string) {
+    const { userId } = await this.authService.decodeToken(token);
+    const { condominiumId } = await this.authService.me(userId);
+
+    const { startDate, endDate } = params;
+
+    const startDateFormatted = `${startDate} 00:00:00`;
+
+    const endDateFormatted = `${endDate} 23:59:59`;
+
+    const { data: calls, error } = await this.supabase
+      .from('resident_calls_with_date')
+      .select('*')
+      .eq('condominium_id', condominiumId)
+      .gte('effective_date', startDateFormatted)
+      .lte('effective_date', endDateFormatted);
+
+    if (error) throw new Error(error.message);
+
+    const cardsCount = calls.reduce(
+      (prev, current) => {
+        if (current.status_id === 3) {
+          return {
+            ...prev,
+            solved: prev.solved + 1,
+          };
+        }
+        if (current.status_id === 2) {
+          return {
+            ...prev,
+            onGoing: prev.onGoing + 1,
+          };
+        }
+
+        return prev;
+      },
+      {
+        onGoing: 0,
+        solved: 0,
+        total: calls.length,
+      },
+    );
+    const callsWithStartAndEndDateNotEmpty = calls.filter(
+      (call) => call.start_date && call.end_date,
+    );
+
+    const totalHours = callsWithStartAndEndDateNotEmpty
+      .map((call) => {
+        const diffInMinutes = differenceInMinutes(
+          call.end_date,
+          call.start_date,
+        );
+        const diffInHours = diffInMinutes / 60;
+        return diffInHours;
+      })
+      .reduce((acc, hour) => acc + hour, 0);
+
+    const averageTime =
+      totalHours && callsWithStartAndEndDateNotEmpty.length > 0
+        ? totalHours / callsWithStartAndEndDateNotEmpty.length
+        : 0;
+    return {
+      ...cardsCount,
+      averageTime,
+    };
+  }
+
   /*   async getCardsVirtualAssemblyPolls(filters: {
       date: string,
       condominiumId: string
