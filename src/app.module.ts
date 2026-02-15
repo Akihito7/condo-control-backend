@@ -11,6 +11,7 @@ import { SecurityModule } from './modules/security/security.module';
 import { StructureModule } from './modules/structure/structure.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { BackofficeModule } from './modules/backoffice/backoffice.module';
 
 @Module({
   imports: [
@@ -30,15 +31,16 @@ import { MailerModule } from '@nestjs-modules/mailer';
         secure: false,
         auth: {
           user: 'akihitodevelopment@gmail.com',
-          pass: 'yeji raqc bkzb jhju'
+          pass: 'yeji raqc bkzb jhju',
         },
       },
       defaults: {
         from: '"No Reply" <akihitodevelopment@gmail.com>',
       },
     }),
+    BackofficeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
